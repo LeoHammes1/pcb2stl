@@ -31,22 +31,18 @@ body { margin: 0; font-family: var(--font-ui); background: var(--bg); color: var
   display: flex; flex-direction: column; gap: 12px;
   counter-reset: sec;
   background-color: var(--bg);
-  background-image:
-    linear-gradient(var(--grid-minor) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid-minor) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: url('./traces.svg');
+  background-size: 120px 120px;
 }
 #viewer { position: relative; overflow: hidden; }
 
-/* wordmark — stamped part badge */
-.brand { position: relative; }
+/* wordmark — stamped domain badge */
 .brand h1 {
   font-family: var(--font-mono); font-size: 14px; font-weight: 600; letter-spacing: 0.16em;
   text-transform: uppercase; margin: 0; color: var(--text); display: inline-block;
   padding: 5px 9px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface-raised);
 }
-.brand h1::after { content: "·STL/GCODE"; color: var(--accent); font-size: 9px; letter-spacing: 0.12em; vertical-align: super; margin-left: 2px; }
-.brand h1::before { content: "REV.2"; position: absolute; top: -7px; left: 13px; font-size: 8px; letter-spacing: 0.18em; color: var(--text-faint); background: var(--bg); padding: 0 3px; }
+.brand h1::after { content: ".online"; color: var(--accent); }
 .brand p { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-muted); margin: 8px 0 0; }
 .brand::after { content: ""; display: block; width: 56px; height: 5px; margin-top: 10px; background: var(--hazard); }
 
@@ -62,8 +58,10 @@ body { margin: 0; font-family: var(--font-ui); background: var(--bg); color: var
 }
 .group-eyebrow {
   font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text-faint); margin: 12px 0 4px;
+  text-transform: uppercase; color: var(--text-muted); margin: 12px 0 6px;
+  display: flex; align-items: center; gap: 6px;
 }
+.group-eyebrow::before { content: ""; width: 5px; height: 5px; background: var(--accent); flex: none; }
 
 /* cards — CAD sheet with amber corner brackets */
 .card {
@@ -87,8 +85,11 @@ body { margin: 0; font-family: var(--font-ui); background: var(--bg); color: var
     linear-gradient(var(--accent), var(--accent)) bottom left / 9px 1px no-repeat,
     linear-gradient(var(--accent), var(--accent)) bottom left / 1px 9px no-repeat;
 }
-.card.action { border-color: var(--border-strong); padding-top: 16px; }
-.card.action::after { inset: 0 0 auto 0; height: 4px; background: var(--hazard); }
+.card.action {
+  padding-top: 16px;
+  background-image: var(--hazard);
+  background-repeat: no-repeat; background-position: top left; background-size: 100% 4px;
+}
 
 /* segmented — detented machine switch */
 .seg { display: flex; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 2px; }
@@ -114,7 +115,7 @@ input[type=number], input[type=file], select {
 input[type=file] { padding: 7px 10px; height: auto; }
 input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
 
 /* dropzone — squared fiducial well */
 .dropzone {
@@ -155,6 +156,8 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .status.ok .dot { background: var(--success); box-shadow: 0 0 7px var(--success); }
 .status.err { color: var(--error); }
 .status.err .dot { background: var(--error); box-shadow: 0 0 7px var(--error); }
+.status.warn { color: var(--accent); text-transform: none; letter-spacing: 0; align-items: flex-start; line-height: 1.4; }
+.status.warn .dot { background: var(--accent); box-shadow: 0 0 7px var(--accent); margin-top: 4px; }
 .dims { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
 
 .hidden { display: none !important; }

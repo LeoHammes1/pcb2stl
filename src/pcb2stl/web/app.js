@@ -20,6 +20,7 @@ let pendingFit = false;
 let firstFit = false;
 let cachedStl = null;
 let controller = null;
+let lastWarning = null;
 
 NUM.forEach((id) => els[id].addEventListener('input', () => scheduleRegen(500, false)));
 ['mirror', 'fill'].forEach((id) => els[id].addEventListener('change', () => scheduleRegen(80, false)));
@@ -58,6 +59,7 @@ async function regen() {
   const file = els.file.files[0];
   const fit = pendingFit;
   pendingFit = false;
+  lastWarning = null;
   if (!file) {
     setStatus('Load a board — Gerber / SVG / DXF', '');
     els.download.disabled = true;
@@ -85,6 +87,7 @@ async function regen() {
       els.legend.classList.remove('hidden');
       els.statsChip.classList.remove('hidden');
       setStats(paths.stats);
+      lastWarning = paths.warning || null;
       showDims(dims);
     } else {
       const buffer = await postBinary('/api/convert', formWith(file, { height_mm: els.height.value, mirror: bool(els.mirror) }), signal);
@@ -114,8 +117,12 @@ async function regen() {
 
 function settle(format) {
   els.download.textContent = exportLabel();
-  const doubleSided = format === 'stl' && els.file2.files[0];
-  setStatus(doubleSided ? 'Ready · double-sided' : 'Ready', 'ok');
+  if (lastWarning) {
+    setStatus(lastWarning, 'warn');
+  } else {
+    const doubleSided = format === 'stl' && els.file2.files[0];
+    setStatus(doubleSided ? 'Ready · double-sided' : 'Ready', 'ok');
+  }
   els.download.disabled = false;
 }
 

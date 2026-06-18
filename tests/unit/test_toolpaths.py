@@ -63,6 +63,14 @@ def test_thin_trace_narrower_than_the_pen_is_still_drawn():
     assert _covered_area(paths, 0.4) >= 0.3 * 10 * 0.8  # the pen still covers the trace
 
 
+def test_thin_trace_draws_near_its_centreline_not_its_outline():
+    trace = Drawing((Polygon2D(((0, 0), (10, 0), (10, 0.4), (0, 0.4))),))
+    paths = generate_toolpaths(trace, PenParams(pen_width_mm=1.0, perimeters=1, fill=True))
+    ys = [y for p in paths for _, y in p]
+    assert ys
+    assert min(ys) > 0.05 and max(ys) < 0.35  # hugs the centre (~0.2), not the 0/0.4 edges
+
+
 def test_mirror_negates_x():
     paths = generate_toolpaths(_square(10), PenParams(pen_width_mm=1.0, perimeters=1, fill=False, mirror=True))
     assert all(x <= 1e-4 for p in paths for x, _ in p)

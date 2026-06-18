@@ -31,6 +31,9 @@ MAX_VERTICES = _int("PCB2STL_MAX_VERTICES", 500_000)
 MAX_POLYGONS = _int("PCB2STL_MAX_POLYGONS", 50_000)
 MAX_EXTENT_MM = _float("PCB2STL_MAX_EXTENT_MM", 1000.0)
 
+# Skip the pen/clearance check above this region count (keeps the preview snappy).
+MAX_CLEARANCE_POLYS = _int("PCB2STL_MAX_CLEARANCE_POLYS", 3000)
+
 # CORS: which origins may call the API from a browser.
 ALLOWED_ORIGINS = [
     origin.strip()

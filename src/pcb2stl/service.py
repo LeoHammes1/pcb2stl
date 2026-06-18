@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from shapely.geometry import Polygon as ShapelyPolygon
+from shapely.strtree import STRtree
+
 from . import config
 from .domain import ConversionParams, Drawing, JigParams, PenParams
 from .gcode import render_gcode
@@ -87,6 +90,7 @@ class ConversionService:
             "stats": {"strokes": count, "draw_mm": round(draw_mm, 1), "travel_mm": round(travel_mm, 1)},
             "bounds": [round(b, 4) for b in bounds],
             "origin": [round(pen.origin_x_mm, 4), round(pen.origin_y_mm, 4)],
+            "warning": _pen_clearance_warning(drawing, pen),
         }
 
     def make_jig(self, filename: str, data: bytes, jig: JigParams) -> bytes:
@@ -104,6 +108,32 @@ class ConversionService:
             raise EmptyDrawingError(filename)
         _check_complexity(drawing)
         return drawing
+
+
+def _pen_clearance_warning(drawing: Drawing, pen: PenParams) -> str | None:
+    clearance = _min_clearance(drawing, within=pen.pen_width_mm * 2.0)
+    if clearance is None or clearance >= pen.pen_width_mm:
+        return None
+    return (
+        f"pen {pen.pen_width_mm:g} mm is wider than the tightest gap "
+        f"{clearance:.2f} mm - those traces will merge; use a thinner pen "
+        f"or widen the clearance in your layout"
+    )
+
+
+def _min_clearance(drawing: Drawing, within: float) -> float | None:
+    """Smallest gap between distinct copper regions within ``within`` mm, or None
+    if there is a single region or too many to check cheaply."""
+    polys = [ShapelyPolygon(p.exterior, p.holes) for p in drawing.polygons]
+    if len(polys) < 2 or len(polys) > config.MAX_CLEARANCE_POLYS:
+        return None
+    tree = STRtree(polys)
+    gap = float("inf")
+    for i, poly in enumerate(polys):
+        for j in tree.query(poly.buffer(within)):
+            if j != i:
+                gap = min(gap, poly.distance(polys[j]))
+    return gap if gap != float("inf") else None
 
 
 def _check_complexity(drawing: Drawing) -> None:

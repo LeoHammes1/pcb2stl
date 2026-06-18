@@ -87,6 +87,16 @@ def test_toolpath_preview_places_strokes_at_the_work_origin():
     assert preview["bounds"][1] == pytest.approx(13.0, abs=0.01)
 
 
+def test_preview_warns_when_pen_is_wider_than_the_clearance():
+    preview = default_service().toolpath_preview("board.gbr", GERBER, PenParams(pen_width_mm=50.0))
+    assert preview["warning"] and "merge" in preview["warning"]
+
+
+def test_preview_does_not_warn_when_the_pen_fits():
+    preview = default_service().toolpath_preview("board.gbr", GERBER, PenParams(pen_width_mm=0.05))
+    assert preview["warning"] is None
+
+
 def test_jig_for_a_board_is_a_watertight_solid():
     mesh = _load(default_service().make_jig("board.gbr", GERBER, JigParams()))
     assert mesh.is_watertight

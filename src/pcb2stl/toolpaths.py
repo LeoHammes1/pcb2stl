@@ -92,9 +92,21 @@ def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Stroke]:
     if pen.fill:
         interior = shape.buffer(-pen.pen_width_mm * pen.perimeters)
         out.extend(("fill", f) for f in _fill(interior, pen.pen_width_mm))
-    if not out:  # too thin to inset -- trace the outline so the feature is not dropped
-        out.extend(("perimeter", r) for r in _rings(shape))
+    if not out:  # thinner than the pen -- trace the centre line, not the outline (less overdraw)
+        out.extend(("perimeter", r) for r in _rings(_spine(shape, pen.pen_width_mm)))
     return out
+
+
+def _spine(shape: BaseGeometry, pen_width: float) -> BaseGeometry:
+    """Largest inward offset that still leaves geometry: a sliver hugging the medial
+    axis, so the pen traces the centre line rather than both edges of a thin feature."""
+    distance, step = 0.0, pen_width / 2.0
+    while step > 0.02:
+        if not shape.buffer(-(distance + step)).is_empty:
+            distance += step
+        step /= 2.0
+    inset = shape.buffer(-distance)
+    return shape if inset.is_empty else inset
 
 
 def _rings(geom: BaseGeometry) -> list[Polyline]:
