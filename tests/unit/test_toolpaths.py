@@ -1,12 +1,13 @@
 import math
 from collections import Counter
 
+import pytest
 from shapely.geometry import LineString
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 
 from pcb2stl.domain import Drawing, PenParams, Polygon2D
-from pcb2stl.toolpaths import generate_toolpaths, optimize_order
+from pcb2stl.toolpaths import generate_toolpaths, optimize_order, path_stats, place_paths
 
 
 def _travel(paths):
@@ -71,3 +72,17 @@ def test_optimize_order_cuts_travel_and_preserves_strokes():
     optimized = optimize_order(paths)
     assert _travel(optimized) < _travel(paths)
     assert _endpoint_pairs(optimized) == _endpoint_pairs(paths)  # same strokes, maybe reversed
+
+
+def test_place_paths_moves_bottom_left_to_origin():
+    placed = place_paths([((5.0, 5.0), (7.0, 9.0))], 10.0, 20.0)
+    assert min(x for p in placed for x, _ in p) == pytest.approx(10.0)
+    assert min(y for p in placed for _, y in p) == pytest.approx(20.0)
+    assert placed[0][1] == pytest.approx((12.0, 24.0))  # (7,9) shifted by (+5,+15)
+
+
+def test_path_stats_measures_draw_and_travel():
+    count, draw, travel = path_stats([((0.0, 0.0), (3.0, 4.0)), ((10.0, 0.0), (12.0, 0.0))])
+    assert count == 2
+    assert draw == pytest.approx(5.0 + 2.0)  # 3-4-5 stroke plus a 2 mm stroke
+    assert travel == pytest.approx(math.hypot(7.0, 4.0))  # hop from (3,4) to (10,0)

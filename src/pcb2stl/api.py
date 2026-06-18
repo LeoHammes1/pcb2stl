@@ -91,6 +91,25 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
             headers={"Content-Disposition": f'attachment; filename="{download}"'},
         )
 
+    @app.post("/api/toolpaths")
+    async def toolpaths(
+        file: UploadFile = File(...),
+        pen_width_mm: float = Form(0.4),
+        perimeters: int = Form(2),
+        fill: bool = Form(True),
+        mirror: bool = Form(False),
+        origin_x_mm: float = Form(10.0),
+        origin_y_mm: float = Form(10.0),
+        board_margin_mm: float = Form(3.0),
+    ) -> dict:
+        pen = _pen(
+            pen_width_mm, perimeters, fill, mirror, 0.0, 2.0,
+            1200.0, 3000.0, 600.0, origin_x_mm, origin_y_mm, board_margin_mm,
+        )
+        _check_size(file)
+        data = await file.read()
+        return _map_errors(lambda: service.toolpath_preview(file.filename or "", data, pen))
+
     @app.post("/api/jig")
     async def jig(
         file: UploadFile = File(...),

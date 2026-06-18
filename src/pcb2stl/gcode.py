@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import math
 from typing import Protocol
 
 from .domain import PenParams
-from .toolpaths import Polyline
+from .toolpaths import Polyline, path_stats, place_paths
 
 
 class PenLift(Protocol):
@@ -29,8 +28,8 @@ class ZPenLift:
 
 def render_gcode(paths: list[Polyline], pen: PenParams, lift: PenLift | None = None) -> str:
     lift = lift or ZPenLift(pen.draw_z_mm, pen.travel_z_mm, pen.z_feed)
-    paths = _place(paths, pen.origin_x_mm + pen.board_margin_mm, pen.origin_y_mm + pen.board_margin_mm)
-    strokes, draw_mm, travel_mm = _stats(paths)
+    paths = place_paths(paths, pen.origin_x_mm + pen.board_margin_mm, pen.origin_y_mm + pen.board_margin_mm)
+    strokes, draw_mm, travel_mm = path_stats(paths)
     lines = [
         "; pcb2stl pen-plot gcode -- no extrusion, no heating",
         f"; jig corner at X{pen.origin_x_mm:.1f} Y{pen.origin_y_mm:.1f}; copper inset {pen.board_margin_mm:.1f} mm",
@@ -54,23 +53,3 @@ def render_gcode(paths: list[Polyline], pen: PenParams, lift: PenLift | None = N
     lines.append(f"G0 X0 Y0 F{pen.travel_feed:.0f}")
     lines.append("M84")
     return "\n".join(lines) + "\n"
-
-
-def _place(paths: list[Polyline], x0: float, y0: float) -> list[Polyline]:
-    points = [point for path in paths for point in path]
-    if not points:
-        return paths
-    dx = x0 - min(x for x, _ in points)
-    dy = y0 - min(y for _, y in points)
-    return [tuple((x + dx, y + dy) for x, y in path) for path in paths]
-
-
-def _stats(paths: list[Polyline]) -> tuple[int, float, float]:
-    cursor = (0.0, 0.0)
-    draw = travel = 0.0
-    for path in paths:
-        travel += math.hypot(path[0][0] - cursor[0], path[0][1] - cursor[1])
-        for a, b in zip(path, path[1:]):
-            draw += math.hypot(b[0] - a[0], b[1] - a[1])
-        cursor = path[-1]
-    return len(paths), draw, travel

@@ -3,96 +3,109 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>pcb2stl — PCB to STL / G-code for pen plotting</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; }
-    #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
-    #panel { padding: 20px; border-right: 1px solid #262a31; overflow-y: auto; }
-    #panel h1 { font-size: 18px; margin: 0 0 4px; }
-    #panel .sub { color: #8a909b; font-size: 12px; margin-bottom: 20px; }
-    label { display: block; font-size: 13px; margin: 14px 0 4px; color: #b8bdc7; }
-    input[type=file], input[type=number], select { width: 100%; padding: 8px; background: #1a1d23;
-      border: 1px solid #2c313a; border-radius: 6px; color: #e6e6e6; }
-    .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
-    .row label { margin: 0; }
-    button { width: 100%; padding: 10px; margin-top: 18px; border: 0; border-radius: 6px;
-      font-size: 14px; font-weight: 600; cursor: pointer; }
-    #convert { background: #3b82f6; color: #fff; }
-    #download { background: #1f2937; color: #e6e6e6; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    #status { margin-top: 16px; font-size: 13px; min-height: 18px; color: #9ca3af; }
-    #status.error { color: #f87171; }
-    #dims { margin-top: 8px; font-size: 13px; color: #6ee7b7; }
-    #viewer { position: relative; }
-  </style>
+  <title>pcb2stl — copper to STL or pen G-code</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div id="app">
     <aside id="panel">
-      <h1>pcb2stl</h1>
-      <div class="sub">PCB copper → STL for your slicer, or G-code straight for a pen plotter.</div>
-
-      <label for="output">Output</label>
-      <select id="output">
-        <option value="stl">STL (for your slicer)</option>
-        <option value="gcode">G-code (pen plotter, no slicer)</option>
-      </select>
-
-      <label id="fileLabel" for="file">Gerber, SVG or DXF file</label>
-      <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
-
-      <div id="bottomRow" style="display:none">
-        <label for="file2">Bottom layer (B.Cu)</label>
-        <input id="file2" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+      <div class="brand">
+        <h1>pcb2stl</h1>
+        <p>Copper → STL or pen G-code</p>
       </div>
 
-      <div id="stlOpts">
-        <label for="height">Layer height (mm)</label>
-        <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
-        <div class="row">
-          <input id="double" type="checkbox" />
-          <label for="double">Double-sided (top + bottom)</label>
+      <div class="eyebrow">Output</div>
+      <div class="seg" id="outputSeg" role="tablist">
+        <button class="seg-btn" data-output="stl" aria-selected="true">STL<small>for slicer</small></button>
+        <button class="seg-btn" data-output="gcode" aria-selected="false">G-code<small>pen plotter</small></button>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Source</div>
+        <label class="dropzone" id="drop">
+          <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+          <div id="dropLabel">⤓ Drop or click — Gerber / SVG / DXF</div>
+          <div class="name hidden" id="fileName"></div>
+        </label>
+        <label class="dropzone bottom hidden" id="bottomRow">
+          <input id="file2" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+          <div>⤓ Bottom layer (B.Cu)</div>
+          <div class="name hidden" id="file2Name"></div>
+        </label>
+        <div class="switch">
+          <input id="mirror" type="checkbox" />
+          <label for="mirror">Mirror (direct drawing)</label>
         </div>
       </div>
 
-      <div id="gcodeOpts" style="display:none">
-        <label for="penWidth">Pen width (mm)</label>
-        <input id="penWidth" type="number" value="0.4" min="0.05" step="0.05" />
-        <label for="perimeters">Perimeters</label>
-        <input id="perimeters" type="number" value="2" min="1" step="1" />
-        <label for="drawZ">Draw Z (mm, pen on board)</label>
-        <input id="drawZ" type="number" value="0" step="0.1" />
-        <label for="travelZ">Travel Z (mm, pen lifted)</label>
-        <input id="travelZ" type="number" value="2" step="0.1" />
-        <label for="drawFeed">Draw feed (mm/min)</label>
-        <input id="drawFeed" type="number" value="1200" min="1" step="100" />
-        <label for="travelFeed">Travel feed (mm/min)</label>
-        <input id="travelFeed" type="number" value="3000" min="1" step="100" />
-        <label for="boardMargin">Board margin (mm)</label>
-        <input id="boardMargin" type="number" value="3" min="0" step="0.5" />
-        <label for="originX">Work origin X (mm)</label>
-        <input id="originX" type="number" value="10" step="1" />
-        <label for="originY">Work origin Y (mm)</label>
-        <input id="originY" type="number" value="10" step="1" />
-        <label for="boardThickness">Board thickness (mm, for jig)</label>
-        <input id="boardThickness" type="number" value="1.6" min="0.1" step="0.1" />
-        <button id="jig" type="button">Download placement jig (STL)</button>
+      <div class="card">
+        <div class="eyebrow">Settings</div>
+
+        <div id="stlOpts">
+          <div class="field">
+            <label for="height">Layer height (mm)</label>
+            <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
+          </div>
+          <div class="switch" style="margin-top:12px">
+            <input id="double" type="checkbox" />
+            <label for="double">Double-sided (top + bottom)</label>
+          </div>
+        </div>
+
+        <div id="gcodeOpts" class="hidden">
+          <div class="group-eyebrow">Pen</div>
+          <div class="grid-2">
+            <div class="field"><label for="penWidth">Pen width</label><input id="penWidth" type="number" value="0.4" min="0.05" step="0.05" /></div>
+            <div class="field"><label for="perimeters">Perimeters</label><input id="perimeters" type="number" value="2" min="1" step="1" /></div>
+          </div>
+          <div class="switch" style="margin-top:10px"><input id="fill" type="checkbox" checked /><label for="fill">Fill copper areas</label></div>
+
+          <div class="group-eyebrow">Motion</div>
+          <div class="grid-2">
+            <div class="field"><label for="drawZ">Draw Z</label><input id="drawZ" type="number" value="0" step="0.1" /></div>
+            <div class="field"><label for="travelZ">Travel Z</label><input id="travelZ" type="number" value="2" step="0.1" /></div>
+            <div class="field"><label for="drawFeed">Draw feed</label><input id="drawFeed" type="number" value="1200" min="1" step="100" /></div>
+            <div class="field"><label for="travelFeed">Travel feed</label><input id="travelFeed" type="number" value="3000" min="1" step="100" /></div>
+          </div>
+
+          <div class="group-eyebrow">Placement</div>
+          <div class="grid-3">
+            <div class="field"><label for="boardMargin">Margin</label><input id="boardMargin" type="number" value="3" min="0" step="0.5" /></div>
+            <div class="field"><label for="originX">Origin X</label><input id="originX" type="number" value="10" step="1" /></div>
+            <div class="field"><label for="originY">Origin Y</label><input id="originY" type="number" value="10" step="1" /></div>
+          </div>
+          <div class="field" style="margin-top:10px"><label for="boardThickness">Board thickness (mm)</label><input id="boardThickness" type="number" value="1.6" min="0.1" step="0.1" /></div>
+          <button class="btn btn-tertiary" id="jig" type="button">⤓ Download placement jig</button>
+        </div>
       </div>
 
-      <div class="row" id="mirrorRow">
-        <input id="mirror" type="checkbox" />
-        <label for="mirror">Mirror (for direct drawing)</label>
+      <div class="card action">
+        <button class="btn btn-primary" id="convert">Convert &amp; preview</button>
+        <button class="btn btn-secondary" id="download" disabled>Download STL</button>
+        <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready.</span></div>
+        <div class="dims" id="dims"></div>
       </div>
-
-      <button id="convert">Convert &amp; preview</button>
-      <button id="download" disabled>Download</button>
-
-      <div id="status"></div>
-      <div id="dims"></div>
     </aside>
-    <main id="viewer"></main>
+
+    <main id="viewer">
+      <div class="seg viewer-tabs" id="viewSeg">
+        <button class="seg-btn" data-view="solid" aria-selected="true">Solid</button>
+        <button class="seg-btn" data-view="toolpaths" aria-selected="false" disabled>Toolpaths</button>
+      </div>
+      <button class="fit-btn" id="fit">⤢ Fit</button>
+      <div class="stats-chip hidden" id="statsChip">
+        <div class="big" id="statStrokes">—</div>
+        <div class="sub" id="statDist"></div>
+      </div>
+      <div class="legend hidden" id="legend">
+        <div class="legend-row">
+          <span class="legend-item"><span class="swatch" style="--c:#F5A524"></span>draw</span>
+          <span class="legend-item"><span class="swatch dash" style="--c:#3B4150"></span>travel</span>
+        </div>
+        <div class="switch"><input id="hideTravel" type="checkbox" /><label for="hideTravel">hide travel</label></div>
+      </div>
+      <div class="origin-label hidden" id="originLabel"></div>
+    </main>
   </div>
 
   <script type="importmap">

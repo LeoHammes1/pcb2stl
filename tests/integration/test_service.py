@@ -69,6 +69,15 @@ def test_gcode_from_gerber_has_no_extrusion_or_heating():
     assert not any(code in text for code in ("M104", "M109", "M140", "M190", "M106"))
 
 
+def test_toolpath_preview_places_strokes_at_the_work_origin():
+    pen = PenParams(pen_width_mm=0.5, origin_x_mm=10.0, origin_y_mm=10.0, board_margin_mm=3.0)
+    preview = default_service().toolpath_preview("board.gbr", GERBER, pen)
+    assert preview["stats"]["strokes"] >= 1
+    assert all(len(stroke) >= 2 for stroke in preview["strokes"])
+    assert preview["bounds"][0] == pytest.approx(13.0, abs=0.01)  # origin + margin
+    assert preview["bounds"][1] == pytest.approx(13.0, abs=0.01)
+
+
 def test_jig_for_a_board_is_a_watertight_solid():
     mesh = _load(default_service().make_jig("board.gbr", GERBER, JigParams()))
     assert mesh.is_watertight

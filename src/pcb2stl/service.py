@@ -11,7 +11,7 @@ from .parsing.dxf import DxfParser
 from .parsing.gerber import GerberParser
 from .parsing.svg import SvgParser
 from .registration import combined_bounds, registration_marks
-from .toolpaths import generate_toolpaths
+from .toolpaths import generate_toolpaths, path_stats, place_paths
 
 _GERBER_EXTENSIONS = ("gbr", "ger", "gtl", "gbl", "gto", "gbo", "gko", "gm1", "art")
 
@@ -59,6 +59,24 @@ class ConversionService:
         """Skip the slicer: emit pen-plotter G-code straight from the copper."""
         drawing = self._parse(filename, data)
         return render_gcode(generate_toolpaths(drawing, pen), pen)
+
+    def toolpath_preview(self, filename: str, data: bytes, pen: PenParams) -> dict:
+        """The placed pen strokes (bed coordinates) plus stats, for the 3D preview."""
+        drawing = self._parse(filename, data)
+        paths = generate_toolpaths(drawing, pen)
+        placed = place_paths(
+            paths, pen.origin_x_mm + pen.board_margin_mm, pen.origin_y_mm + pen.board_margin_mm
+        )
+        count, draw_mm, travel_mm = path_stats(placed)
+        xs = [x for path in placed for x, _ in path]
+        ys = [y for path in placed for _, y in path]
+        bounds = [min(xs), min(ys), max(xs), max(ys)] if xs else [0.0, 0.0, 0.0, 0.0]
+        return {
+            "strokes": [[[round(x, 4), round(y, 4)] for x, y in path] for path in placed],
+            "stats": {"strokes": count, "draw_mm": round(draw_mm, 1), "travel_mm": round(travel_mm, 1)},
+            "bounds": [round(b, 4) for b in bounds],
+            "origin": [round(pen.origin_x_mm, 4), round(pen.origin_y_mm, 4)],
+        }
 
     def make_jig(self, filename: str, data: bytes, jig: JigParams) -> bytes:
         """A printable corner jig sized to the board, to seat it at the work origin."""

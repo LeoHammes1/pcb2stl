@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 from shapely.geometry import GeometryCollection, LineString, MultiLineString, MultiPolygon
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.geometry.base import BaseGeometry
@@ -44,6 +46,28 @@ def optimize_order(paths: list[Polyline]) -> list[Polyline]:
 
 def _dist2(a: tuple[float, float], b: tuple[float, float]) -> float:
     return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
+
+
+def place_paths(paths: list[Polyline], x0: float, y0: float) -> list[Polyline]:
+    """Translate the paths so their bottom-left corner sits at (x0, y0)."""
+    points = [point for path in paths for point in path]
+    if not points:
+        return paths
+    dx = x0 - min(x for x, _ in points)
+    dy = y0 - min(y for _, y in points)
+    return [tuple((x + dx, y + dy) for x, y in path) for path in paths]
+
+
+def path_stats(paths: list[Polyline]) -> tuple[int, float, float]:
+    """Return (stroke count, drawn length mm, pen-up travel length mm)."""
+    cursor = (0.0, 0.0)
+    draw = travel = 0.0
+    for path in paths:
+        travel += math.hypot(path[0][0] - cursor[0], path[0][1] - cursor[1])
+        for a, b in zip(path, path[1:]):
+            draw += math.hypot(b[0] - a[0], b[1] - a[1])
+        cursor = path[-1]
+    return len(paths), draw, travel
 
 
 def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Polyline]:

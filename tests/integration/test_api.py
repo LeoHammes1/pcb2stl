@@ -75,6 +75,19 @@ def test_gcode_endpoint_returns_pen_plotter_program():
     assert re.search(r"[ \t]E-?\d", body) is None
 
 
+def test_toolpaths_endpoint_returns_json_strokes_and_stats():
+    response = client.post(
+        "/api/toolpaths",
+        files={"file": ("board.gbr", GERBER, "application/octet-stream")},
+        data={"pen_width_mm": "0.5"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["stats"]["strokes"] >= 1
+    assert len(body["strokes"]) >= 1
+    assert len(body["bounds"]) == 4
+
+
 def test_jig_endpoint_returns_a_watertight_stl():
     response = client.post(
         "/api/jig",
