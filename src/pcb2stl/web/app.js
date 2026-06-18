@@ -111,7 +111,8 @@ async function convertGcode() {
     ]);
     keep(new Blob([text], { type: 'text/plain' }), stem(file.name) + '.gcode');
     showDims(viewer.showSTL(stl));
-    setStatus(`G-code ready (${text.split('\n').length} lines). Preview shows the copper to be drawn.`);
+    const stats = (text.match(/;\s*(strokes [^\n]*)/) || [])[1] || `${text.split('\n').length} lines`;
+    setStatus(`G-code ready — ${stats}. Preview shows the copper to be drawn.`);
   });
 }
 

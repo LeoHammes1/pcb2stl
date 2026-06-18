@@ -19,6 +19,11 @@ def test_preamble_units_home_and_motor_disable():
     assert text.strip().endswith("M84")
 
 
+def test_header_reports_stroke_and_travel_stats():
+    text = render_gcode(PATHS, PenParams())
+    assert re.search(r"; strokes \d+, draw \d+ mm, travel \d+ mm", text)
+
+
 def test_pen_lowers_to_draw_and_raises_to_travel():
     text = render_gcode(PATHS, PenParams(draw_z_mm=0.0, travel_z_mm=2.0))
     assert "Z0.000" in text  # pen down

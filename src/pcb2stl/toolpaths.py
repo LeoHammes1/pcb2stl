@@ -16,7 +16,34 @@ def generate_toolpaths(drawing: Drawing, pen: PenParams) -> list[Polyline]:
     for polygon in drawing.polygons:
         shape = ShapelyPolygon(polygon.exterior, polygon.holes)
         paths.extend(_paths_for(shape, pen))
-    return [_mirror(p) for p in paths] if pen.mirror else paths
+    if pen.mirror:
+        paths = [_mirror(p) for p in paths]
+    return optimize_order(paths)
+
+
+def optimize_order(paths: list[Polyline]) -> list[Polyline]:
+    """Greedy nearest-neighbour ordering with per-stroke direction, to cut the
+    pen-up travel between strokes. Drawn geometry is unchanged."""
+    remaining = list(paths)
+    ordered: list[Polyline] = []
+    cursor = (0.0, 0.0)
+    while remaining:
+        index, reverse, best = 0, False, float("inf")
+        for i, path in enumerate(remaining):
+            to_start = _dist2(cursor, path[0])
+            to_end = _dist2(cursor, path[-1])
+            if to_start < best:
+                index, reverse, best = i, False, to_start
+            if to_end < best:
+                index, reverse, best = i, True, to_end
+        path = remaining.pop(index)
+        ordered.append(path[::-1] if reverse else path)
+        cursor = ordered[-1][-1]
+    return ordered
+
+
+def _dist2(a: tuple[float, float], b: tuple[float, float]) -> float:
+    return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2
 
 
 def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Polyline]:

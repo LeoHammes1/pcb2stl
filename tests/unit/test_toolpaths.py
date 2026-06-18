@@ -1,9 +1,25 @@
+import math
+from collections import Counter
+
 from shapely.geometry import LineString
 from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 
 from pcb2stl.domain import Drawing, PenParams, Polygon2D
-from pcb2stl.toolpaths import generate_toolpaths
+from pcb2stl.toolpaths import generate_toolpaths, optimize_order
+
+
+def _travel(paths):
+    cursor = (0.0, 0.0)
+    total = 0.0
+    for path in paths:
+        total += math.dist(cursor, path[0])
+        cursor = path[-1]
+    return total
+
+
+def _endpoint_pairs(paths):
+    return Counter(frozenset((path[0], path[-1])) for path in paths)
 
 
 def _square(side=10.0):
@@ -43,3 +59,10 @@ def test_thin_trace_narrower_than_the_pen_is_still_drawn():
 def test_mirror_negates_x():
     paths = generate_toolpaths(_square(10), PenParams(pen_width_mm=1.0, perimeters=1, fill=False, mirror=True))
     assert all(x <= 1e-4 for p in paths for x, _ in p)
+
+
+def test_optimize_order_cuts_travel_and_preserves_strokes():
+    paths = [((0, 0), (1, 0)), ((100, 0), (101, 0)), ((2, 0), (3, 0)), ((101, 0), (102, 0))]
+    optimized = optimize_order(paths)
+    assert _travel(optimized) < _travel(paths)
+    assert _endpoint_pairs(optimized) == _endpoint_pairs(paths)  # same strokes, maybe reversed
