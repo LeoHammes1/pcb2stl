@@ -29,6 +29,8 @@ def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Polyline]:
     if pen.fill:
         interior = shape.buffer(-pen.pen_width_mm * pen.perimeters)
         out.extend(_fill(interior, pen.pen_width_mm))
+    if not out:  # too thin to inset -- trace the outline so the feature is not dropped
+        out.extend(_rings(shape))
     return out
 
 

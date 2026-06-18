@@ -33,6 +33,13 @@ def test_holes_are_not_drawn():
     assert all(not hole.intersects(LineString(p)) for p in paths if len(p) >= 2)
 
 
+def test_thin_trace_narrower_than_the_pen_is_still_drawn():
+    trace = Drawing((Polygon2D(((0, 0), (10, 0), (10, 0.3), (0, 0.3))),))
+    paths = generate_toolpaths(trace, PenParams(pen_width_mm=0.4, perimeters=2, fill=True))
+    assert paths  # not silently dropped
+    assert _covered_area(paths, 0.4) >= 0.3 * 10 * 0.8  # the pen still covers the trace
+
+
 def test_mirror_negates_x():
     paths = generate_toolpaths(_square(10), PenParams(pen_width_mm=1.0, perimeters=1, fill=False, mirror=True))
     assert all(x <= 1e-4 for p in paths for x, _ in p)
