@@ -3,8 +3,8 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { STLLoader } from './vendor/STLLoader.js';
 
 const C = {
-  bg: 0x0a0b0f, copper: 0xc4873a, draw: 0xf5a524, travel: 0x3b4150, accent: 0x6366f1,
-  gridMinor: 0x1a1d24, gridMajor: 0x262a33, axisX: 0xe5564b, axisY: 0x2fb389,
+  bg: 0x0c0d0e, copper: 0xc4873a, draw: 0xf5a524, travel: 0x6a7180, accent: 0xf5a524,
+  gridMinor: 0x202327, gridMajor: 0x33373d, axisX: 0xe5564b, axisY: 0x3dbe78,
 };
 
 export class Viewer {
