@@ -31,5 +31,15 @@ MAX_VERTICES = _int("PCB2STL_MAX_VERTICES", 500_000)
 MAX_POLYGONS = _int("PCB2STL_MAX_POLYGONS", 50_000)
 MAX_EXTENT_MM = _float("PCB2STL_MAX_EXTENT_MM", 1000.0)
 
+# CORS: which origins may call the API from a browser.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "PCB2STL_ALLOWED_ORIGINS",
+        "https://pcb2stl.online,http://localhost:8000,http://127.0.0.1:8000",
+    ).split(",")
+    if origin.strip()
+]
+
 # Run conversions inline instead of in the pool (tests only).
 INLINE = os.environ.get("PCB2STL_INLINE") == "1"

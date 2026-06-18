@@ -24,9 +24,7 @@ class EmptyDrawingError(ValueError):
 
 
 class ParseError(ValueError):
-    def __init__(self, filename: str, cause: Exception) -> None:
-        super().__init__(f"could not parse {filename!r}: {cause}")
-        self.filename = filename
+    """The input could not be parsed (kept picklable for the worker pool)."""
 
 
 class ComplexityError(ValueError):
@@ -97,7 +95,7 @@ class ConversionService:
         try:
             drawing = parser.parse(data)
         except Exception as exc:
-            raise ParseError(filename, exc) from exc
+            raise ParseError(f"could not parse {filename!r}: {exc}") from exc
         if drawing.is_empty:
             raise EmptyDrawingError(filename)
         _check_complexity(drawing)

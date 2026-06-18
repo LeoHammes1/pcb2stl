@@ -32,6 +32,13 @@ def test_hard_timeout_kills_the_worker_and_raises(monkeypatch):
         asyncio.run(offload(worker.sleep, 5.0))
 
 
+def test_parse_error_propagates_as_valueerror_across_the_pool():
+    # custom exceptions must survive pickling out of the worker process
+    bad = b"%FSLAX46Y46*%\n%MOMM*%\n%ADD10R*%\nM02*\n"
+    with pytest.raises(ValueError):
+        asyncio.run(offload(worker.convert_job, "bad.gbr", bad, ConversionParams()))
+
+
 def test_concurrency_cap_sheds_excess_load_with_overload(monkeypatch):
     monkeypatch.setattr(config, "MAX_CONCURRENT", 1)
 

@@ -68,3 +68,21 @@ def test_svg_without_physical_size_treats_user_units_as_mm():
     )
     drawing = SvgParser().parse(svg.encode())
     assert drawing.bounds == pytest.approx((2.0, 2.0, 8.0, 6.0), abs=0.01)
+
+
+def test_billion_laughs_svg_is_rejected():
+    bomb = (
+        '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">'
+        '<!ENTITY lol2 "&lol;&lol;">]><svg xmlns="http://www.w3.org/2000/svg">&lol2;</svg>'
+    )
+    with pytest.raises(ValueError):
+        SvgParser().parse(bomb.encode())
+
+
+def test_xxe_external_entity_svg_is_rejected():
+    xxe = (
+        '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+        '<svg xmlns="http://www.w3.org/2000/svg">&xxe;</svg>'
+    )
+    with pytest.raises(ValueError):
+        SvgParser().parse(xxe.encode())

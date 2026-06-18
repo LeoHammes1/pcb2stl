@@ -160,6 +160,40 @@ def test_binary_garbage_returns_400():
     assert response.status_code == 400
 
 
+def test_error_responses_do_not_leak_internals():
+    response = client.post(
+        "/api/convert", files={"file": ("board.gbr", MALFORMED_GERBER, "application/octet-stream")}
+    )
+    assert response.status_code == 400
+    detail = response.json()["detail"]
+    assert "valid Gerber" in detail
+    assert "Traceback" not in detail and "gerbonara" not in detail.lower() and ".py" not in detail
+
+
+def test_svg_xxe_upload_returns_400():
+    xxe = (
+        b'<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+        b'<svg xmlns="http://www.w3.org/2000/svg">&xxe;</svg>'
+    )
+    response = client.post("/api/convert", files={"file": ("evil.svg", xxe, "image/svg+xml")})
+    assert response.status_code == 400
+
+
+def test_security_headers_are_set():
+    headers = client.get("/api/formats").headers
+    assert "default-src 'self'" in headers["content-security-policy"]
+    assert headers["x-content-type-options"] == "nosniff"
+    assert headers["x-frame-options"] == "DENY"
+    assert headers["referrer-policy"] == "no-referrer"
+
+
+def test_cors_allows_only_configured_origins():
+    allowed = client.get("/api/formats", headers={"Origin": "https://pcb2stl.online"})
+    assert allowed.headers.get("access-control-allow-origin") == "https://pcb2stl.online"
+    blocked = client.get("/api/formats", headers={"Origin": "https://evil.example"})
+    assert blocked.headers.get("access-control-allow-origin") != "https://evil.example"
+
+
 def test_oversized_upload_is_rejected_with_413(monkeypatch):
     monkeypatch.setattr("pcb2stl.config.MAX_UPLOAD_BYTES", 8)
     response = client.post(
