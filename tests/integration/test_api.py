@@ -43,7 +43,7 @@ def test_convert_svg_respects_height():
 
 def test_unsupported_format_returns_415():
     response = client.post(
-        "/api/convert", files={"file": ("board.dxf", b"junk", "application/octet-stream")}
+        "/api/convert", files={"file": ("board.pdf", b"junk", "application/octet-stream")}
     )
     assert response.status_code == 415
 

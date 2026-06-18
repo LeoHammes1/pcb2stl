@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pcb2stl"
 version = "0.1.0"
-description = "Convert PCB copper artwork (Gerber/SVG) into a manifold STL for pen-plotting etch resist."
+description = "Convert PCB copper artwork (Gerber/SVG/DXF) into a manifold STL for pen-plotting etch resist."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "python-multipart>=0.0.9",
     "gerbonara>=1.6",
+    "ezdxf>=1.1",
     "manifold3d>=2.5",
     "shapely>=2.0",
     "svgelements>=1.9",

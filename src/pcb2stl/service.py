@@ -3,6 +3,7 @@ from __future__ import annotations
 from .domain import ConversionParams
 from .meshing import ManifoldMesher, Mesher
 from .parsing.base import ParserResolver
+from .parsing.dxf import DxfParser
 from .parsing.gerber import GerberParser
 from .parsing.svg import SvgParser
 
@@ -42,7 +43,8 @@ class ConversionService:
 
 
 def default_service() -> ConversionService:
-    gerber, svg = GerberParser(), SvgParser()
+    gerber = GerberParser()
     parsers = {ext: gerber for ext in _GERBER_EXTENSIONS}
-    parsers["svg"] = svg
+    parsers["svg"] = SvgParser()
+    parsers["dxf"] = DxfParser()
     return ConversionService(ParserResolver(parsers), ManifoldMesher())
