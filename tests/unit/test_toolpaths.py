@@ -61,6 +61,11 @@ def test_mirror_negates_x():
     assert all(x <= 1e-4 for p in paths for x, _ in p)
 
 
+def test_convex_fill_is_chained_into_few_strokes():
+    paths = generate_toolpaths(_square(20), PenParams(pen_width_mm=1.0, perimeters=2, fill=True))
+    assert len(paths) <= 6  # 2 perimeter rings + a chained boustrophedon, not ~16 separate rows
+
+
 def test_optimize_order_cuts_travel_and_preserves_strokes():
     paths = [((0, 0), (1, 0)), ((100, 0), (101, 0)), ((2, 0), (3, 0)), ((101, 0), (102, 0))]
     optimized = optimize_order(paths)

@@ -72,16 +72,39 @@ def _rings(geom: BaseGeometry) -> list[Polyline]:
 def _fill(region: BaseGeometry, spacing: float) -> list[Polyline]:
     out: list[Polyline] = []
     for polygon in _polygons(region):
-        minx, miny, maxx, maxy = polygon.bounds
-        y = miny + spacing / 2.0
-        row = 0
-        while y < maxy:
-            scan = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
-            for segment in _segments(scan.intersection(polygon)):
-                out.append(segment if row % 2 == 0 else segment[::-1])
-            y += spacing
-            row += 1
+        out.extend(_chain(_scan_rows(polygon, spacing), polygon))
     return out
+
+
+def _scan_rows(polygon: ShapelyPolygon, spacing: float) -> list[Polyline]:
+    minx, miny, maxx, maxy = polygon.bounds
+    rows: list[Polyline] = []
+    y = miny + spacing / 2.0
+    row = 0
+    while y < maxy:
+        scan = LineString([(minx - 1.0, y), (maxx + 1.0, y)])
+        for segment in _segments(scan.intersection(polygon)):
+            rows.append(segment if row % 2 == 0 else segment[::-1])
+        y += spacing
+        row += 1
+    return rows
+
+
+def _chain(segments: list[Polyline], region: ShapelyPolygon) -> list[Polyline]:
+    field = region.buffer(1e-6)
+    chains: list[Polyline] = []
+    current: list[tuple[float, float]] = []
+    for segment in segments:
+        link_stays_on_copper = current and field.covers(LineString([current[-1], segment[0]]))
+        if link_stays_on_copper:
+            current.extend(segment)
+        else:
+            if current:
+                chains.append(tuple(current))
+            current = list(segment)
+    if current:
+        chains.append(tuple(current))
+    return chains
 
 
 def _polygons(geom: BaseGeometry) -> list[ShapelyPolygon]:
