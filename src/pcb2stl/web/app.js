@@ -4,10 +4,10 @@ const viewer = new Viewer(document.getElementById('viewer'));
 const el = (id) => document.getElementById(id);
 const els = {};
 for (const id of [
-  'format', 'drop', 'file', 'fileName', 'dropLabel', 'bottomRow', 'file2', 'file2Name', 'mirror',
-  'stlOpts', 'gcodeOpts', 'boardOpts', 'jigOpts', 'height', 'penWidth', 'perimeters', 'fill',
+  'format', 'drop', 'file', 'fileName', 'bottomRow', 'file2', 'file2Name', 'mirror',
+  'stlOpts', 'gcodeOpts', 'placementCard', 'height', 'penWidth', 'perimeters', 'fill',
   'drawZ', 'travelZ', 'drawFeed', 'travelFeed', 'boardMargin', 'originX', 'originY', 'boardThickness',
-  'download', 'status', 'statusText', 'dims', 'fit', 'hideTravel', 'legend', 'statsChip',
+  'jig', 'download', 'status', 'statusText', 'dims', 'fit', 'hideTravel', 'legend', 'statsChip',
   'statStrokes', 'statDist',
 ]) els[id] = el(id);
 
@@ -25,6 +25,7 @@ els.format.addEventListener('change', () => { applyFormat(els.format.value); sch
 els.hideTravel.addEventListener('change', () => viewer.setTravelVisible(!els.hideTravel.checked));
 els.fit.addEventListener('click', () => viewer.fit());
 els.download.addEventListener('click', onDownload);
+els.jig.addEventListener('click', downloadJig);
 setupDrop(els.drop, els.file, els.fileName);
 setupDrop(els.bottomRow, els.file2, els.file2Name);
 
@@ -32,15 +33,16 @@ applyFormat('stl');
 
 function applyFormat(value) {
   const gcode = value === 'gcode';
-  const dbl = value === 'double';
-  const jig = value === 'jig';
-  els.stlOpts.classList.toggle('hidden', gcode || jig);
+  els.stlOpts.classList.toggle('hidden', gcode);
   els.gcodeOpts.classList.toggle('hidden', !gcode);
-  els.boardOpts.classList.toggle('hidden', !(gcode || jig));
-  els.jigOpts.classList.toggle('hidden', !jig);
-  els.bottomRow.classList.toggle('hidden', !dbl);
-  els.dropLabel.textContent = dbl ? '⤓ Top layer (F.Cu)' : '⤓ Drop or click — Gerber / SVG / DXF';
-  els.download.textContent = { stl: '⤓ Download .stl', double: '⤓ Download .zip', gcode: '⤓ Download .gcode', jig: '⤓ Download jig .stl' }[value];
+  els.placementCard.classList.toggle('hidden', !gcode);
+  els.bottomRow.classList.toggle('hidden', gcode);
+  els.download.textContent = exportLabel();
+}
+
+function exportLabel() {
+  if (els.format.value === 'gcode') return '⤓ Download .gcode';
+  return els.file2.files[0] ? '⤓ Download .zip (2-sided)' : '⤓ Download .stl';
 }
 
 function scheduleRegen(delay, fit) {
@@ -104,28 +106,30 @@ async function regen() {
 }
 
 function settle(format) {
-  if (format === 'double' && !els.file2.files[0]) {
-    setStatus('Add the bottom layer (B.Cu) to export', '');
-    els.download.disabled = true;
-  } else {
-    setStatus('Ready', 'ok');
-    els.download.disabled = false;
-  }
+  els.download.textContent = exportLabel();
+  const doubleSided = format === 'stl' && els.file2.files[0];
+  setStatus(doubleSided ? 'Ready · double-sided' : 'Ready', 'ok');
+  els.download.disabled = false;
 }
 
 async function onDownload() {
   const file = els.file.files[0];
   if (!file) return;
-  const format = els.format.value;
-  if (format === 'stl') return saveBlob(cachedStl, stem(file.name) + '.stl');
-  if (format === 'double') {
-    if (!els.file2.files[0]) return setStatus('Add the bottom layer (B.Cu) first', 'err');
-    return buildAndSave('/api/convert-double', archive(), 'pcb2stl-double-sided.zip', 'application/zip', postBinary, 'Writing zip…');
-  }
-  if (format === 'gcode') {
+  if (els.format.value === 'gcode') {
     return buildAndSave('/api/gcode', formWith(file, motionFields()), stem(file.name) + '.gcode', 'text/plain', postText, 'Writing G-code…');
   }
-  return buildAndSave('/api/jig', formWith(file, { board_thickness_mm: els.boardThickness.value, board_margin_mm: els.boardMargin.value }), stem(file.name) + '-jig.stl', 'model/stl', postBinary, 'Building jig…');
+  if (els.file2.files[0]) {
+    return buildAndSave('/api/convert-double', archive(), 'pcb2stl-double-sided.zip', 'application/zip', postBinary, 'Writing zip…');
+  }
+  return saveBlob(cachedStl, stem(file.name) + '.stl');
+}
+
+async function downloadJig() {
+  const file = els.file.files[0];
+  if (!file) return setStatus('Load a board first', 'err');
+  return buildAndSave('/api/jig', formWith(file, {
+    board_thickness_mm: els.boardThickness.value, board_margin_mm: els.boardMargin.value,
+  }), stem(file.name) + '-jig.stl', 'model/stl', postBinary, 'Building jig…');
 }
 
 async function buildAndSave(url, form, name, type, poster, busyMessage) {
