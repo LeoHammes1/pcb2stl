@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pcb2stl — PCB to STL for pen plotting</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; }
+    #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+    #panel { padding: 20px; border-right: 1px solid #262a31; overflow-y: auto; }
+    #panel h1 { font-size: 18px; margin: 0 0 4px; }
+    #panel .sub { color: #8a909b; font-size: 12px; margin-bottom: 20px; }
+    label { display: block; font-size: 13px; margin: 14px 0 4px; color: #b8bdc7; }
+    input[type=file], input[type=number] { width: 100%; padding: 8px; background: #1a1d23;
+      border: 1px solid #2c313a; border-radius: 6px; color: #e6e6e6; }
+    .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    button { width: 100%; padding: 10px; margin-top: 18px; border: 0; border-radius: 6px;
+      font-size: 14px; font-weight: 600; cursor: pointer; }
+    #convert { background: #3b82f6; color: #fff; }
+    #download { background: #1f2937; color: #e6e6e6; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #status { margin-top: 16px; font-size: 13px; min-height: 18px; color: #9ca3af; }
+    #status.error { color: #f87171; }
+    #dims { margin-top: 8px; font-size: 13px; color: #6ee7b7; }
+    #viewer { position: relative; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <aside id="panel">
+      <h1>pcb2stl</h1>
+      <div class="sub">PCB copper → manifold STL for pen-plotting etch resist.</div>
+
+      <label for="file">Gerber or SVG file</label>
+      <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg" />
+
+      <label for="height">Layer height (mm)</label>
+      <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
+
+      <div class="row">
+        <input id="mirror" type="checkbox" />
+        <label for="mirror" style="margin:0">Mirror (for direct drawing)</label>
+      </div>
+
+      <button id="convert">Convert &amp; preview</button>
+      <button id="download" disabled>Download STL</button>
+
+      <div id="status"></div>
+      <div id="dims"></div>
+    </aside>
+    <main id="viewer"></main>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js" } }
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+services:
+  pcb2stl:
+    build: .
+    image: pcb2stl
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
