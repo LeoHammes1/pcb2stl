@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
-from .domain import ConversionParams, PenParams
+from .domain import ConversionParams, JigParams, PenParams
 from .parsing.base import UnsupportedFormatError
 from .service import ConversionService, EmptyDrawingError, default_service
 
@@ -73,10 +73,13 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
         draw_feed: float = Form(1200.0),
         travel_feed: float = Form(3000.0),
         z_feed: float = Form(600.0),
+        origin_x_mm: float = Form(10.0),
+        origin_y_mm: float = Form(10.0),
+        board_margin_mm: float = Form(3.0),
     ) -> Response:
         pen = _pen(
-            pen_width_mm, perimeters, fill, mirror,
-            draw_z_mm, travel_z_mm, draw_feed, travel_feed, z_feed,
+            pen_width_mm, perimeters, fill, mirror, draw_z_mm, travel_z_mm,
+            draw_feed, travel_feed, z_feed, origin_x_mm, origin_y_mm, board_margin_mm,
         )
         _check_size(file)
         data = await file.read()
@@ -87,6 +90,18 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
             media_type="text/plain; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="{download}"'},
         )
+
+    @app.post("/api/jig")
+    async def jig(
+        file: UploadFile = File(...),
+        board_thickness_mm: float = Form(1.6),
+        board_margin_mm: float = Form(3.0),
+    ) -> Response:
+        params = _jig(board_thickness_mm, board_margin_mm)
+        _check_size(file)
+        data = await file.read()
+        stl = _map_errors(lambda: service.make_jig(file.filename or "", data, params))
+        return _stl_response(stl, f"{Path(file.filename or 'board').stem}-jig.stl")
 
     if _WEB_DIR.is_dir():
         app.mount("/", StaticFiles(directory=_WEB_DIR, html=True), name="web")
@@ -111,6 +126,9 @@ def _pen(
     draw_feed: float,
     travel_feed: float,
     z_feed: float,
+    origin_x_mm: float,
+    origin_y_mm: float,
+    board_margin_mm: float,
 ) -> PenParams:
     try:
         return PenParams(
@@ -123,7 +141,17 @@ def _pen(
             draw_feed=draw_feed,
             travel_feed=travel_feed,
             z_feed=z_feed,
+            origin_x_mm=origin_x_mm,
+            origin_y_mm=origin_y_mm,
+            board_margin_mm=board_margin_mm,
         )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _jig(board_thickness_mm: float, board_margin_mm: float) -> JigParams:
+    try:
+        return JigParams(board_thickness_mm=board_thickness_mm, board_margin_mm=board_margin_mm)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -26,6 +26,12 @@ def test_pen_lowers_to_draw_and_raises_to_travel():
 
 
 def test_travel_is_g0_and_drawing_is_g1():
-    text = render_gcode([((0.0, 0.0), (5.0, 0.0))], PenParams())
+    text = render_gcode([((0.0, 0.0), (5.0, 0.0))], PenParams(origin_x_mm=0.0, origin_y_mm=0.0, board_margin_mm=0.0))
     assert "G0 X0.000 Y0.000" in text  # rapid to the start with the pen up
     assert "G1 X5.000 Y0.000" in text  # drawing stroke
+
+
+def test_origin_and_margin_offset_the_coordinates():
+    text = render_gcode([((0.0, 0.0), (5.0, 5.0))], PenParams(origin_x_mm=10.0, origin_y_mm=10.0, board_margin_mm=3.0))
+    assert "X13.000 Y13.000" in text  # copper min lands at origin + margin
+    assert "X18.000 Y18.000" in text

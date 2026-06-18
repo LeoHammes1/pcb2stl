@@ -75,6 +75,19 @@ def test_gcode_endpoint_returns_pen_plotter_program():
     assert re.search(r"[ \t]E-?\d", body) is None
 
 
+def test_jig_endpoint_returns_a_watertight_stl():
+    response = client.post(
+        "/api/jig",
+        files={"file": ("board.gbr", GERBER, "application/octet-stream")},
+        data={"board_thickness_mm": "1.6", "board_margin_mm": "3"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "model/stl"
+    assert "board-jig.stl" in response.headers["content-disposition"]
+    mesh = trimesh.load(io.BytesIO(response.content), file_type="stl")
+    assert mesh.is_watertight
+
+
 def test_gcode_endpoint_rejects_invalid_pen_width():
     response = client.post(
         "/api/gcode",

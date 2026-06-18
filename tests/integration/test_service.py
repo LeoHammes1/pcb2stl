@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import trimesh
 
-from pcb2stl.domain import ConversionParams, PenParams
+from pcb2stl.domain import ConversionParams, JigParams, PenParams
 from pcb2stl.parsing.base import UnsupportedFormatError
 from pcb2stl.service import ConversionService, EmptyDrawingError, default_service
 
@@ -67,6 +67,13 @@ def test_gcode_from_gerber_has_no_extrusion_or_heating():
     assert "G28" in text and text.strip().endswith("M84")
     assert re.search(r"[ \t]E-?\d", text) is None
     assert not any(code in text for code in ("M104", "M109", "M140", "M190", "M106"))
+
+
+def test_jig_for_a_board_is_a_watertight_solid():
+    mesh = _load(default_service().make_jig("board.gbr", GERBER, JigParams()))
+    assert mesh.is_watertight
+    assert mesh.volume > 0.0
+    assert mesh.bounds[1][2] == pytest.approx(1.6, abs=0.01)  # walls at board thickness
 
 
 def test_unsupported_extension_is_rejected():

@@ -59,6 +59,14 @@ pen on Z — no `E`, no `M104/M109`, no fan.
 - Targets Marlin (Ender-class). Bambu printers are locked down and need their own
   toolchain, so plain G-code is not guaranteed there.
 
+### Placing the board
+
+The toolpaths start at a fixed **work origin** (default X10 Y10) with the copper inset
+by the **board margin**. To seat the physical board there repeatably, download the
+**placement jig** — an STL sized to your board — print it, fix it on the bed with its
+inner corner at the work origin, and butt the board into the L. Cut the board to the
+copper extent plus that margin on each side so it fills the jig.
+
 ## Local development
 
 ```sh

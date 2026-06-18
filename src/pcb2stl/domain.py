@@ -61,6 +61,9 @@ class PenParams:
     draw_feed: float = 1200.0
     travel_feed: float = 3000.0
     z_feed: float = 600.0
+    origin_x_mm: float = 10.0
+    origin_y_mm: float = 10.0
+    board_margin_mm: float = 3.0
 
     def __post_init__(self) -> None:
         if self.pen_width_mm <= 0:
@@ -71,3 +74,22 @@ class PenParams:
             raise ValueError("travel_z_mm must be above draw_z_mm")
         if min(self.draw_feed, self.travel_feed, self.z_feed) <= 0:
             raise ValueError("feed rates must be positive")
+        if self.board_margin_mm < 0:
+            raise ValueError("board_margin_mm cannot be negative")
+
+
+@dataclass(frozen=True)
+class JigParams:
+    """Printable corner-jig dimensions that locate the board at the work origin."""
+
+    board_thickness_mm: float = 1.6
+    board_margin_mm: float = 3.0
+    wall_mm: float = 2.5
+    flange_mm: float = 6.0
+    base_mm: float = 1.2
+
+    def __post_init__(self) -> None:
+        if min(self.board_thickness_mm, self.wall_mm, self.flange_mm, self.base_mm) <= 0:
+            raise ValueError("jig dimensions must be positive")
+        if self.board_margin_mm < 0:
+            raise ValueError("board_margin_mm cannot be negative")

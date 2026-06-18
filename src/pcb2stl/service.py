@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from .domain import ConversionParams, Drawing, PenParams
+from .domain import ConversionParams, Drawing, JigParams, PenParams
 from .gcode import render_gcode
+from .jig import build_jig_stl
 from .meshing import ManifoldMesher, Mesher
 from .parsing.base import ParserResolver
 from .parsing.dxf import DxfParser
@@ -58,6 +59,11 @@ class ConversionService:
         """Skip the slicer: emit pen-plotter G-code straight from the copper."""
         drawing = self._parse(filename, data)
         return render_gcode(generate_toolpaths(drawing, pen), pen)
+
+    def make_jig(self, filename: str, data: bytes, jig: JigParams) -> bytes:
+        """A printable corner jig sized to the board, to seat it at the work origin."""
+        minx, miny, maxx, maxy = self._parse(filename, data).bounds
+        return build_jig_stl(maxx - minx, maxy - miny, jig)
 
     def _parse(self, filename: str, data: bytes) -> Drawing:
         parser = self._resolver.resolve(filename)

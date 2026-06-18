@@ -13,6 +13,14 @@ class Mesher(Protocol):
     def mesh(self, drawing: Drawing, params: ConversionParams) -> bytes: ...
 
 
+def solid_to_stl(solid) -> bytes:
+    """Convert a manifold3d solid into watertight binary STL bytes."""
+    mesh = solid.to_mesh()
+    vertices = np.asarray(mesh.vert_properties)[:, :3].astype(np.float64)
+    faces = np.asarray(mesh.tri_verts).astype(np.int64)
+    return trimesh.Trimesh(vertices=vertices, faces=faces, process=False).export(file_type="stl")
+
+
 class ManifoldMesher:
     """Extrude a 2D drawing into a watertight binary STL via the Manifold kernel."""
 
@@ -20,12 +28,7 @@ class ManifoldMesher:
         if drawing.is_empty:
             raise ValueError("cannot mesh an empty drawing")
         section = CrossSection(self._contours(drawing, params.mirror), FillRule.EvenOdd)
-        solid = section.extrude(params.height_mm)
-        mesh = solid.to_mesh()
-        vertices = np.asarray(mesh.vert_properties)[:, :3].astype(np.float64)
-        faces = np.asarray(mesh.tri_verts).astype(np.int64)
-        body = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
-        return body.export(file_type="stl")
+        return solid_to_stl(section.extrude(params.height_mm))
 
     @staticmethod
     def _contours(drawing: Drawing, mirror: bool) -> list[list[tuple[float, float]]]:

@@ -19,6 +19,11 @@ const els = {
   travelZ: el('travelZ'),
   drawFeed: el('drawFeed'),
   travelFeed: el('travelFeed'),
+  boardMargin: el('boardMargin'),
+  originX: el('originX'),
+  originY: el('originY'),
+  boardThickness: el('boardThickness'),
+  jig: el('jig'),
   convert: el('convert'),
   download: el('download'),
   status: el('status'),
@@ -31,7 +36,8 @@ let resultName = 'board.stl';
 els.output.addEventListener('change', refreshMode);
 els.double.addEventListener('change', refreshMode);
 els.convert.addEventListener('click', () => MODES[mode()]());
-els.download.addEventListener('click', downloadResult);
+els.download.addEventListener('click', () => saveBlob(resultBlob, resultName));
+els.jig.addEventListener('click', downloadJig);
 
 function mode() {
   if (els.output.value === 'gcode') return 'gcode';
@@ -93,6 +99,9 @@ async function convertGcode() {
     travel_z_mm: els.travelZ.value,
     draw_feed: els.drawFeed.value,
     travel_feed: els.travelFeed.value,
+    origin_x_mm: els.originX.value,
+    origin_y_mm: els.originY.value,
+    board_margin_mm: els.boardMargin.value,
   });
   const preview = formWith(file, { height_mm: '0.2', mirror: bool(els.mirror) });
   await run(async () => {
@@ -146,12 +155,32 @@ function keep(blob, name) {
   resultName = name;
 }
 
-function downloadResult() {
-  if (!resultBlob) return;
-  const url = URL.createObjectURL(resultBlob);
+async function downloadJig() {
+  const file = els.file.files[0];
+  if (!file) return setStatus('Choose a file first.', true);
+  const form = formWith(file, {
+    board_thickness_mm: els.boardThickness.value,
+    board_margin_mm: els.boardMargin.value,
+  });
+  els.jig.disabled = true;
+  setStatus('Building jig…');
+  try {
+    const stl = await postBinary('/api/jig', form);
+    saveBlob(new Blob([stl], { type: 'model/stl' }), stem(file.name) + '-jig.stl');
+    setStatus('Jig ready — print it, fix it at the work origin, seat the board in the corner.');
+  } catch (err) {
+    setStatus(err.message, true);
+  } finally {
+    els.jig.disabled = false;
+  }
+}
+
+function saveBlob(blob, name) {
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = resultName;
+  a.download = name;
   a.click();
   URL.revokeObjectURL(url);
 }
