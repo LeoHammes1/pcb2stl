@@ -64,6 +64,10 @@ class PenParams:
     origin_x_mm: float = 10.0
     origin_y_mm: float = 10.0
     board_margin_mm: float = 3.0
+    lift_mode: str = "z"
+    servo_up_deg: float = 90.0
+    servo_down_deg: float = 40.0
+    servo_dwell_ms: float = 300.0
 
     def __post_init__(self) -> None:
         if self.pen_width_mm <= 0:
@@ -76,6 +80,8 @@ class PenParams:
             raise ValueError("feed rates must be positive")
         if self.board_margin_mm < 0:
             raise ValueError("board_margin_mm cannot be negative")
+        if self.lift_mode not in ("z", "servo"):
+            raise ValueError("lift_mode must be 'z' or 'servo'")
 
 
 @dataclass(frozen=True)

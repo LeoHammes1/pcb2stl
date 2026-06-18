@@ -66,6 +66,21 @@
               <div class="field"><label for="drawFeed">Draw feed</label><input id="drawFeed" type="number" value="1200" min="1" step="100" /></div>
               <div class="field"><label for="travelFeed">Travel feed</label><input id="travelFeed" type="number" value="3000" min="1" step="100" /></div>
             </div>
+            <div class="group-eyebrow">Pen lift</div>
+            <div class="field">
+              <label for="liftMode">Lift mode</label>
+              <select id="liftMode">
+                <option value="z">Z axis (pen mount)</option>
+                <option value="servo">Servo (M280)</option>
+              </select>
+            </div>
+            <div id="servoOpts" class="hidden">
+              <div class="grid-3">
+                <div class="field"><label for="servoUp">Up °</label><input id="servoUp" type="number" value="90" step="1" /></div>
+                <div class="field"><label for="servoDown">Down °</label><input id="servoDown" type="number" value="40" step="1" /></div>
+                <div class="field"><label for="servoDwell">Dwell ms</label><input id="servoDwell" type="number" value="300" min="0" step="50" /></div>
+              </div>
+            </div>
           </details>
         </div>
       </div>
@@ -96,7 +111,8 @@
       </div>
       <div class="legend hidden" id="legend">
         <div class="legend-row">
-          <span class="legend-item"><span class="swatch" style="--c:#F5A524"></span>draw</span>
+          <span class="legend-item"><span class="swatch" style="--c:#FBBF24"></span>perimeter</span>
+          <span class="legend-item"><span class="swatch" style="--c:#B45309"></span>fill</span>
           <span class="legend-item"><span class="swatch dash" style="--c:#6A7180"></span>travel</span>
         </div>
         <div class="switch"><input id="hideTravel" type="checkbox" /><label for="hideTravel">hide travel</label></div>

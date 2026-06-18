@@ -7,7 +7,13 @@ from shapely.geometry import Polygon as ShapelyPolygon
 from shapely.ops import unary_union
 
 from pcb2stl.domain import Drawing, PenParams, Polygon2D
-from pcb2stl.toolpaths import generate_toolpaths, optimize_order, path_stats, place_paths
+from pcb2stl.toolpaths import (
+    generate_toolpaths,
+    optimize_order,
+    path_stats,
+    place_paths,
+    tagged_toolpaths,
+)
 
 
 def _travel(paths):
@@ -60,6 +66,14 @@ def test_thin_trace_narrower_than_the_pen_is_still_drawn():
 def test_mirror_negates_x():
     paths = generate_toolpaths(_square(10), PenParams(pen_width_mm=1.0, perimeters=1, fill=False, mirror=True))
     assert all(x <= 1e-4 for p in paths for x, _ in p)
+
+
+def test_tagged_toolpaths_label_perimeter_and_fill():
+    pen = PenParams(pen_width_mm=1.0, perimeters=2, fill=True)
+    tagged = tagged_toolpaths(_square(20), pen)
+    kinds = {kind for kind, _ in tagged}
+    assert kinds == {"perimeter", "fill"}
+    assert [points for _, points in tagged] == generate_toolpaths(_square(20), pen)
 
 
 def test_convex_fill_is_chained_into_few_strokes():

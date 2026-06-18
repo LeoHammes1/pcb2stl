@@ -9,38 +9,50 @@ from shapely.geometry.base import BaseGeometry
 from .domain import Drawing, PenParams
 
 Polyline = tuple[tuple[float, float], ...]
+Stroke = tuple[str, Polyline]  # ('perimeter' | 'fill', points)
 
 
 def generate_toolpaths(drawing: Drawing, pen: PenParams) -> list[Polyline]:
     """Turn filled copper into pen strokes: concentric perimeters plus a zig-zag
     fill, so the drawn resist covers each region solidly."""
-    paths: list[Polyline] = []
+    return [points for _, points in tagged_toolpaths(drawing, pen)]
+
+
+def tagged_toolpaths(drawing: Drawing, pen: PenParams) -> list[Stroke]:
+    """Strokes that keep their kind ('perimeter'/'fill'), for the coloured preview."""
+    strokes: list[Stroke] = []
     for polygon in drawing.polygons:
         shape = ShapelyPolygon(polygon.exterior, polygon.holes)
-        paths.extend(_paths_for(shape, pen))
+        strokes.extend(_paths_for(shape, pen))
     if pen.mirror:
-        paths = [_mirror(p) for p in paths]
-    return optimize_order(paths)
+        strokes = [(kind, _mirror(points)) for kind, points in strokes]
+    return _nearest_neighbour(strokes, lambda s: s[1], lambda s: (s[0], s[1][::-1]))
 
 
 def optimize_order(paths: list[Polyline]) -> list[Polyline]:
     """Greedy nearest-neighbour ordering with per-stroke direction, to cut the
     pen-up travel between strokes. Drawn geometry is unchanged."""
-    remaining = list(paths)
-    ordered: list[Polyline] = []
+    return _nearest_neighbour(paths, lambda path: path, lambda path: path[::-1])
+
+
+def _nearest_neighbour(items, points_of, reverse_of):
+    remaining = list(items)
+    ordered = []
     cursor = (0.0, 0.0)
     while remaining:
-        index, reverse, best = 0, False, float("inf")
-        for i, path in enumerate(remaining):
-            to_start = _dist2(cursor, path[0])
-            to_end = _dist2(cursor, path[-1])
+        index, do_reverse, best = 0, False, float("inf")
+        for i, item in enumerate(remaining):
+            points = points_of(item)
+            to_start = _dist2(cursor, points[0])
+            to_end = _dist2(cursor, points[-1])
             if to_start < best:
-                index, reverse, best = i, False, to_start
+                index, do_reverse, best = i, False, to_start
             if to_end < best:
-                index, reverse, best = i, True, to_end
-        path = remaining.pop(index)
-        ordered.append(path[::-1] if reverse else path)
-        cursor = ordered[-1][-1]
+                index, do_reverse, best = i, True, to_end
+        item = remaining.pop(index)
+        chosen = reverse_of(item) if do_reverse else item
+        ordered.append(chosen)
+        cursor = points_of(chosen)[-1]
     return ordered
 
 
@@ -70,18 +82,18 @@ def path_stats(paths: list[Polyline]) -> tuple[int, float, float]:
     return len(paths), draw, travel
 
 
-def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Polyline]:
-    out: list[Polyline] = []
+def _paths_for(shape: ShapelyPolygon, pen: PenParams) -> list[Stroke]:
+    out: list[Stroke] = []
     for index in range(pen.perimeters):
         ring = shape.buffer(-pen.pen_width_mm * (index + 0.5))
         if ring.is_empty:
             break
-        out.extend(_rings(ring))
+        out.extend(("perimeter", r) for r in _rings(ring))
     if pen.fill:
         interior = shape.buffer(-pen.pen_width_mm * pen.perimeters)
-        out.extend(_fill(interior, pen.pen_width_mm))
+        out.extend(("fill", f) for f in _fill(interior, pen.pen_width_mm))
     if not out:  # too thin to inset -- trace the outline so the feature is not dropped
-        out.extend(_rings(shape))
+        out.extend(("perimeter", r) for r in _rings(shape))
     return out
 
 

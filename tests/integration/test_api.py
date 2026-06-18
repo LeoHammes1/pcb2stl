@@ -90,6 +90,7 @@ def test_toolpaths_endpoint_returns_json_strokes_and_stats():
     body = response.json()
     assert body["stats"]["strokes"] >= 1
     assert len(body["strokes"]) >= 1
+    assert len(body["kinds"]) == len(body["strokes"])
     assert len(body["bounds"]) == 4
 
 

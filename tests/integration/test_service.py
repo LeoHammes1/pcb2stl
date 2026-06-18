@@ -81,6 +81,8 @@ def test_toolpath_preview_places_strokes_at_the_work_origin():
     preview = default_service().toolpath_preview("board.gbr", GERBER, pen)
     assert preview["stats"]["strokes"] >= 1
     assert all(len(stroke) >= 2 for stroke in preview["strokes"])
+    assert len(preview["kinds"]) == len(preview["strokes"])
+    assert set(preview["kinds"]) <= {"perimeter", "fill"}
     assert preview["bounds"][0] == pytest.approx(13.0, abs=0.01)  # origin + margin
     assert preview["bounds"][1] == pytest.approx(13.0, abs=0.01)
 

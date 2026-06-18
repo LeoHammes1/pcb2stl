@@ -7,6 +7,7 @@ for (const id of [
   'format', 'drop', 'file', 'fileName', 'bottomRow', 'file2', 'file2Name', 'mirror',
   'stlOpts', 'gcodeOpts', 'placementCard', 'height', 'penWidth', 'perimeters', 'fill',
   'drawZ', 'travelZ', 'drawFeed', 'travelFeed', 'boardMargin', 'originX', 'originY', 'boardThickness',
+  'liftMode', 'servoOpts', 'servoUp', 'servoDown', 'servoDwell',
   'jig', 'download', 'status', 'statusText', 'dims', 'fit', 'hideTravel', 'legend', 'statsChip',
   'statStrokes', 'statDist',
 ]) els[id] = el(id);
@@ -27,6 +28,7 @@ els.hideTravel.addEventListener('change', () => viewer.setTravelVisible(!els.hid
 els.fit.addEventListener('click', () => viewer.fit());
 els.download.addEventListener('click', onDownload);
 els.jig.addEventListener('click', downloadJig);
+els.liftMode.addEventListener('change', () => els.servoOpts.classList.toggle('hidden', els.liftMode.value !== 'servo'));
 setupDrop(els.drop, els.file, els.fileName);
 setupDrop(els.bottomRow, els.file2, els.file2Name);
 
@@ -162,6 +164,8 @@ function motionFields() {
   return {
     ...geomFields(), draw_z_mm: els.drawZ.value, travel_z_mm: els.travelZ.value,
     draw_feed: els.drawFeed.value, travel_feed: els.travelFeed.value,
+    lift_mode: els.liftMode.value, servo_up_deg: els.servoUp.value,
+    servo_down_deg: els.servoDown.value, servo_dwell_ms: els.servoDwell.value,
   };
 }
 

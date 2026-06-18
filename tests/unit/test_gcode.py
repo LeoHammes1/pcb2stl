@@ -1,9 +1,23 @@
 import re
 
+import pytest
+
 from pcb2stl.domain import PenParams
 from pcb2stl.gcode import render_gcode
 
 PATHS = [((0.0, 0.0), (10.0, 0.0), (10.0, 10.0)), ((2.0, 2.0), (8.0, 2.0))]
+
+
+def test_servo_lift_emits_m280_and_dwell_not_z_moves():
+    text = render_gcode(PATHS, PenParams(lift_mode="servo", servo_up_deg=85, servo_down_deg=35, servo_dwell_ms=250))
+    assert "M280 P0 S85" in text and "M280 P0 S35" in text
+    assert "G4 P250" in text
+    assert "G1 Z" not in text  # servo mode never moves Z for the pen
+
+
+def test_invalid_lift_mode_is_rejected():
+    with pytest.raises(ValueError):
+        PenParams(lift_mode="laser")
 
 
 def test_no_extrusion_no_heating_no_fan():

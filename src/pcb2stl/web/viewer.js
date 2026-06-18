@@ -3,8 +3,8 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { STLLoader } from './vendor/STLLoader.js';
 
 const C = {
-  bg: 0x0c0d0e, copper: 0xc4873a, draw: 0xf5a524, travel: 0x6a7180, accent: 0xf5a524,
-  gridMinor: 0x202327, gridMajor: 0x33373d, axisX: 0xe5564b, axisY: 0x3dbe78,
+  bg: 0x0c0d0e, copper: 0xc4873a, perimeter: 0xfbbf24, fill: 0xb45309, travel: 0x6a7180,
+  accent: 0xf5a524, gridMinor: 0x202327, gridMajor: 0x33373d, axisX: 0xe5564b, axisY: 0x3dbe78,
 };
 
 export class Viewer {
@@ -79,13 +79,17 @@ export class Viewer {
     const zDraw = 0.05;
     const zTravel = 0.6;
 
-    const draw = [];
-    for (const stroke of data.strokes) {
+    const kinds = data.kinds || [];
+    const perimeter = [];
+    const fill = [];
+    data.strokes.forEach((stroke, index) => {
+      const target = kinds[index] === 'fill' ? fill : perimeter;
       for (let i = 0; i < stroke.length - 1; i++) {
-        draw.push(stroke[i][0], stroke[i][1], zDraw, stroke[i + 1][0], stroke[i + 1][1], zDraw);
+        target.push(stroke[i][0], stroke[i][1], zDraw, stroke[i + 1][0], stroke[i + 1][1], zDraw);
       }
-    }
-    this.pathGroup.add(this._lines(draw, new THREE.LineBasicMaterial({ color: C.draw })));
+    });
+    this.pathGroup.add(this._lines(fill, new THREE.LineBasicMaterial({ color: C.fill, transparent: true, opacity: 0.75 })));
+    this.pathGroup.add(this._lines(perimeter, new THREE.LineBasicMaterial({ color: C.perimeter })));
 
     const travel = [];
     for (let i = 0; i < data.strokes.length - 1; i++) {

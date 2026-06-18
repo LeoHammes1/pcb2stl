@@ -119,10 +119,15 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
         origin_x_mm: float = Form(10.0),
         origin_y_mm: float = Form(10.0),
         board_margin_mm: float = Form(3.0),
+        lift_mode: str = Form("z"),
+        servo_up_deg: float = Form(90.0),
+        servo_down_deg: float = Form(40.0),
+        servo_dwell_ms: float = Form(300.0),
     ) -> Response:
         pen = _pen(
             pen_width_mm, perimeters, fill, mirror, draw_z_mm, travel_z_mm,
             draw_feed, travel_feed, z_feed, origin_x_mm, origin_y_mm, board_margin_mm,
+            lift_mode, servo_up_deg, servo_down_deg, servo_dwell_ms,
         )
         data = await _read(file)
         text = await _run(worker.gcode_job, file.filename or "", data, pen)
@@ -188,6 +193,10 @@ def _pen(
     origin_x_mm: float,
     origin_y_mm: float,
     board_margin_mm: float,
+    lift_mode: str = "z",
+    servo_up_deg: float = 90.0,
+    servo_down_deg: float = 40.0,
+    servo_dwell_ms: float = 300.0,
 ) -> PenParams:
     try:
         return PenParams(
@@ -203,6 +212,10 @@ def _pen(
             origin_x_mm=origin_x_mm,
             origin_y_mm=origin_y_mm,
             board_margin_mm=board_margin_mm,
+            lift_mode=lift_mode,
+            servo_up_deg=servo_up_deg,
+            servo_down_deg=servo_down_deg,
+            servo_dwell_ms=servo_dwell_ms,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
