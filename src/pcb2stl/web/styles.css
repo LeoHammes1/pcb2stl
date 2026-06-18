@@ -27,13 +27,39 @@ body { margin: 0; font-family: var(--font-ui); background: var(--bg); color: var
 
 #app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; }
 #panel {
-  padding: 20px; border-right: 1px solid var(--border); overflow-y: auto;
+  position: relative;
+  padding: 20px; border-right: 1px solid var(--grid-major); overflow-y: auto;
   display: flex; flex-direction: column; gap: 12px;
   counter-reset: sec;
   background-color: var(--bg);
-  background-image: url('./traces.svg');
-  background-size: 120px 120px;
 }
+/* animated copper-trace backdrop (traces-bg.js) sits behind the panel content;
+   it fades out toward the right edge so the panel/viewer seam stays soft */
+.trace-bg {
+  position: absolute; top: 0; left: 0; z-index: 0; display: block; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 44px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 44px), transparent 100%);
+}
+#panel > .brand, #panel > .card, #panel > .panel-foot { position: relative; z-index: 1; }
+
+/* footer — repo link + author credit, pinned to the bottom of the panel */
+.panel-foot { margin-top: auto; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.foot-repo {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 34px; border: 1px solid var(--border-strong); border-radius: 2px; background: var(--surface-alt);
+  color: var(--text-muted); text-decoration: none;
+  font-family: var(--font-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.10em; text-transform: uppercase;
+  transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+.foot-repo:hover { color: var(--text); border-color: var(--text-faint); background: var(--surface-raised); }
+.foot-repo svg { flex: none; }
+.foot-by {
+  text-align: center; text-decoration: none;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint);
+  transition: color 120ms ease;
+}
+.foot-by:hover { color: var(--text-muted); }
+.foot-name { color: var(--accent); }
 #viewer { position: relative; overflow: hidden; }
 
 /* wordmark — stamped domain badge */
@@ -84,11 +110,6 @@ body { margin: 0; font-family: var(--font-ui); background: var(--bg); color: var
     linear-gradient(var(--accent), var(--accent)) top right / 1px 9px no-repeat,
     linear-gradient(var(--accent), var(--accent)) bottom left / 9px 1px no-repeat,
     linear-gradient(var(--accent), var(--accent)) bottom left / 1px 9px no-repeat;
-}
-.card.action {
-  padding-top: 16px;
-  background-image: var(--hazard);
-  background-repeat: no-repeat; background-position: top left; background-size: 100% 4px;
 }
 
 /* segmented — detented machine switch */
@@ -170,9 +191,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
   font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
 }
 .fit-btn:hover { color: var(--text); border-color: var(--text-faint); }
-.stats-chip { position: absolute; top: 14px; right: 90px; background: var(--surface-alt); border: 1px solid var(--border-strong); border-radius: 2px; padding: 8px 14px; text-align: right; }
-.stats-chip .big { font-family: var(--font-mono); font-size: 20px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
-.stats-chip .sub { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--text-muted); }
 .legend {
   position: absolute; bottom: 14px; left: 14px; background: var(--surface-alt); border: 1px solid var(--border-strong);
   border-radius: 2px; padding: 10px 12px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;

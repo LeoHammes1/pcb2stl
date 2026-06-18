@@ -8,8 +8,7 @@ for (const id of [
   'stlOpts', 'gcodeOpts', 'placementCard', 'height', 'penWidth', 'perimeters', 'fill',
   'drawZ', 'travelZ', 'drawFeed', 'travelFeed', 'boardMargin', 'originX', 'originY', 'boardThickness',
   'liftMode', 'servoOpts', 'servoUp', 'servoDown', 'servoDwell',
-  'jig', 'download', 'status', 'statusText', 'dims', 'fit', 'hideTravel', 'legend', 'statsChip',
-  'statStrokes', 'statDist',
+  'jig', 'download', 'status', 'statusText', 'dims', 'fit', 'hideTravel', 'legend',
 ]) els[id] = el(id);
 
 const NUM = ['height', 'penWidth', 'perimeters', 'drawZ', 'travelZ', 'drawFeed', 'travelFeed', 'boardMargin', 'originX', 'originY', 'boardThickness'];
@@ -85,8 +84,6 @@ async function regen() {
       viewer.showToolpaths(paths);
       viewer.setMode('toolpaths');
       els.legend.classList.remove('hidden');
-      els.statsChip.classList.remove('hidden');
-      setStats(paths.stats);
       lastWarning = paths.warning || null;
       showDims(dims);
     } else {
@@ -96,7 +93,6 @@ async function regen() {
       const dims = viewer.showSolid(buffer.slice(0));
       viewer.setMode('solid');
       els.legend.classList.add('hidden');
-      els.statsChip.classList.add('hidden');
       showDims(dims);
     }
     if (fit || !firstFit) {
@@ -230,11 +226,6 @@ function saveBlob(blob, name) {
   a.download = name;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function setStats(stats) {
-  els.statStrokes.textContent = `${stats.strokes} strokes`;
-  els.statDist.textContent = `draw ${(stats.draw_mm / 1000).toFixed(1)} m · travel ${(stats.travel_mm / 1000).toFixed(1)} m`;
 }
 
 function showDims(dims) {
