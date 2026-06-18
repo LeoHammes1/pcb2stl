@@ -14,12 +14,6 @@
         <p>Copper → STL or pen G-code</p>
       </div>
 
-      <div class="eyebrow">Output</div>
-      <div class="seg" id="outputSeg" role="tablist">
-        <button class="seg-btn" data-output="stl" aria-selected="true">STL<small>for slicer</small></button>
-        <button class="seg-btn" data-output="gcode" aria-selected="false">G-code<small>pen plotter</small></button>
-      </div>
-
       <div class="card">
         <div class="eyebrow">Source</div>
         <label class="dropzone" id="drop">
@@ -46,10 +40,6 @@
             <label for="height">Layer height (mm)</label>
             <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
           </div>
-          <div class="switch" style="margin-top:12px">
-            <input id="double" type="checkbox" />
-            <label for="double">Double-sided (top + bottom)</label>
-          </div>
         </div>
 
         <div id="gcodeOpts" class="hidden">
@@ -59,39 +49,48 @@
             <div class="field"><label for="perimeters">Perimeters</label><input id="perimeters" type="number" value="2" min="1" step="1" /></div>
           </div>
           <div class="switch" style="margin-top:10px"><input id="fill" type="checkbox" checked /><label for="fill">Fill copper areas</label></div>
+          <details id="gcodeAdvanced">
+            <summary>Advanced</summary>
+            <div class="group-eyebrow">Motion</div>
+            <div class="grid-2">
+              <div class="field"><label for="drawZ">Draw Z</label><input id="drawZ" type="number" value="0" step="0.1" /></div>
+              <div class="field"><label for="travelZ">Travel Z</label><input id="travelZ" type="number" value="2" step="0.1" /></div>
+              <div class="field"><label for="drawFeed">Draw feed</label><input id="drawFeed" type="number" value="1200" min="1" step="100" /></div>
+              <div class="field"><label for="travelFeed">Travel feed</label><input id="travelFeed" type="number" value="3000" min="1" step="100" /></div>
+            </div>
+            <div class="group-eyebrow">Origin</div>
+            <div class="grid-2">
+              <div class="field"><label for="originX">Origin X</label><input id="originX" type="number" value="10" step="1" /></div>
+              <div class="field"><label for="originY">Origin Y</label><input id="originY" type="number" value="10" step="1" /></div>
+            </div>
+          </details>
+        </div>
 
-          <div class="group-eyebrow">Motion</div>
-          <div class="grid-2">
-            <div class="field"><label for="drawZ">Draw Z</label><input id="drawZ" type="number" value="0" step="0.1" /></div>
-            <div class="field"><label for="travelZ">Travel Z</label><input id="travelZ" type="number" value="2" step="0.1" /></div>
-            <div class="field"><label for="drawFeed">Draw feed</label><input id="drawFeed" type="number" value="1200" min="1" step="100" /></div>
-            <div class="field"><label for="travelFeed">Travel feed</label><input id="travelFeed" type="number" value="3000" min="1" step="100" /></div>
-          </div>
+        <div id="boardOpts" class="hidden">
+          <div class="field"><label for="boardMargin">Board margin (mm)</label><input id="boardMargin" type="number" value="3" min="0" step="0.5" /></div>
+        </div>
 
-          <div class="group-eyebrow">Placement</div>
-          <div class="grid-3">
-            <div class="field"><label for="boardMargin">Margin</label><input id="boardMargin" type="number" value="3" min="0" step="0.5" /></div>
-            <div class="field"><label for="originX">Origin X</label><input id="originX" type="number" value="10" step="1" /></div>
-            <div class="field"><label for="originY">Origin Y</label><input id="originY" type="number" value="10" step="1" /></div>
-          </div>
+        <div id="jigOpts" class="hidden">
           <div class="field" style="margin-top:10px"><label for="boardThickness">Board thickness (mm)</label><input id="boardThickness" type="number" value="1.6" min="0.1" step="0.1" /></div>
-          <button class="btn btn-tertiary" id="jig" type="button">⤓ Download placement jig</button>
         </div>
       </div>
 
-      <div class="card action">
-        <button class="btn btn-primary" id="convert">Convert &amp; preview</button>
-        <button class="btn btn-secondary" id="download" disabled>Download STL</button>
-        <div class="status" id="status"><span class="dot"></span><span id="statusText">Ready.</span></div>
+      <div class="card action" id="exportBus">
+        <div class="status" id="status"><span class="dot"></span><span id="statusText">Load a board — Gerber / SVG / DXF</span></div>
         <div class="dims" id="dims"></div>
+        <div class="export-row">
+          <select id="format" class="dro-select" aria-label="Output format">
+            <option value="stl">STL · for slicer</option>
+            <option value="double">Double-sided · top+bottom (.zip)</option>
+            <option value="gcode">G-code · pen plotter (.gcode)</option>
+            <option value="jig">Placement jig · printable (.stl)</option>
+          </select>
+          <button class="btn btn-primary" id="download" disabled>⤓ Download .stl</button>
+        </div>
       </div>
     </aside>
 
     <main id="viewer">
-      <div class="seg viewer-tabs" id="viewSeg">
-        <button class="seg-btn" data-view="solid" aria-selected="true">Solid</button>
-        <button class="seg-btn" data-view="toolpaths" aria-selected="false" disabled>Toolpaths</button>
-      </div>
       <button class="fit-btn" id="fit">⤢ Fit</button>
       <div class="stats-chip hidden" id="statsChip">
         <div class="big" id="statStrokes">—</div>

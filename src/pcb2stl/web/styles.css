@@ -180,3 +180,23 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .swatch { width: 14px; height: 0; border-top: 2px solid var(--c); }
 .swatch.dash { border-top-style: dashed; }
 .origin-label { position: absolute; transform: translate(-50%, -130%); font-family: var(--font-mono); font-size: 11px; color: var(--text); pointer-events: none; white-space: nowrap; text-shadow: 0 1px 3px var(--bg); }
+
+/* export bus — format selector fused with download */
+.export-row { display: flex; gap: 8px; align-items: stretch; }
+.dro-select { flex: 1 1 auto; min-width: 0; height: 40px; }
+.export-row .btn { width: auto; flex: 0 0 auto; padding: 0 14px; }
+
+/* busy LED (auto-preview) */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.status.busy .dot { background: var(--accent); box-shadow: 0 0 7px var(--accent); animation: pulse 1s ease-in-out infinite; }
+#viewer.dim { opacity: 0.6; transition: opacity 0.15s ease; }
+
+/* collapsed advanced disclosure */
+#gcodeAdvanced { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 8px; }
+#gcodeAdvanced summary {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--text-muted); cursor: pointer; list-style: none; padding: 2px 0;
+}
+#gcodeAdvanced summary::-webkit-details-marker { display: none; }
+#gcodeAdvanced summary::before { content: "▸ "; color: var(--text-faint); }
+#gcodeAdvanced[open] summary::before { content: "▾ "; }

@@ -115,7 +115,6 @@ export class Viewer {
     this.bedGroup.visible = mode === 'toolpaths';
     this.pathGroup.visible = mode === 'toolpaths';
     if (this.originLabel) this.originLabel.classList.toggle('hidden', mode !== 'toolpaths' || !this.originWorld);
-    this._frame();
   }
 
   setTravelVisible(visible) {
