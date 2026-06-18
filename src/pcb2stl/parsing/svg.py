@@ -92,11 +92,12 @@ def _is_stroked(shape: se.Shape) -> bool:
 
 
 def _reject_unsafe_xml(data: bytes) -> None:
-    """Block XXE and entity-expansion (billion-laughs) before svgelements parses:
-    any DTD/entity is forbidden (no legitimate PCB SVG needs one)."""
+    """Block XXE and entity-expansion (billion-laughs) before svgelements parses.
+    Entities and external references are forbidden, but a plain DOCTYPE is allowed
+    (KiCad and other tools emit the standard SVG 1.1 DTD reference)."""
     try:
-        DefusedET.fromstring(data, forbid_dtd=True)
+        DefusedET.fromstring(data, forbid_dtd=False, forbid_entities=True, forbid_external=True)
     except DefusedXmlException as exc:
-        raise ValueError("SVG with a DTD or entities is not allowed") from exc
+        raise ValueError("SVG with entities or external references is not allowed") from exc
     except ElementTree.ParseError as exc:
         raise ValueError("invalid SVG XML") from exc
