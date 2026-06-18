@@ -181,11 +181,6 @@ input:focus, select:focus { outline: none; border-color: var(--accent); box-shad
 .swatch.dash { border-top-style: dashed; }
 .origin-label { position: absolute; transform: translate(-50%, -130%); font-family: var(--font-mono); font-size: 11px; color: var(--text); pointer-events: none; white-space: nowrap; text-shadow: 0 1px 3px var(--bg); }
 
-/* export bus — format selector fused with download */
-.export-row { display: flex; gap: 8px; align-items: stretch; }
-.dro-select { flex: 1 1 auto; min-width: 0; height: 40px; }
-.export-row .btn { width: auto; flex: 0 0 auto; padding: 0 14px; }
-
 /* busy LED (auto-preview) */
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 .status.busy .dot { background: var(--accent); box-shadow: 0 0 7px var(--accent); animation: pulse 1s ease-in-out infinite; }

@@ -35,6 +35,16 @@
       <div class="card">
         <div class="eyebrow">Settings</div>
 
+        <div class="field">
+          <label for="format">Output</label>
+          <select id="format" aria-label="Output format">
+            <option value="stl">STL · for slicer</option>
+            <option value="double">Double-sided · top+bottom (.zip)</option>
+            <option value="gcode">G-code · pen plotter (.gcode)</option>
+            <option value="jig">Placement jig · printable (.stl)</option>
+          </select>
+        </div>
+
         <div id="stlOpts">
           <div class="field">
             <label for="height">Layer height (mm)</label>
@@ -78,15 +88,7 @@
       <div class="card action" id="exportBus">
         <div class="status" id="status"><span class="dot"></span><span id="statusText">Load a board — Gerber / SVG / DXF</span></div>
         <div class="dims" id="dims"></div>
-        <div class="export-row">
-          <select id="format" class="dro-select" aria-label="Output format">
-            <option value="stl">STL · for slicer</option>
-            <option value="double">Double-sided · top+bottom (.zip)</option>
-            <option value="gcode">G-code · pen plotter (.gcode)</option>
-            <option value="jig">Placement jig · printable (.stl)</option>
-          </select>
-          <button class="btn btn-primary" id="download" disabled>⤓ Download .stl</button>
-        </div>
+        <button class="btn btn-primary" id="download" disabled>⤓ Download .stl</button>
       </div>
     </aside>
 
