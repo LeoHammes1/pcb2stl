@@ -1,0 +1,115 @@
+# pcb2stl — production namespace, Traefik ingress + cert-manager (cloudflare-issuer)
+# URL: https://pcb2stl.online
+# The CI sets the image to ghcr.io/<owner>/pcb2stl:<sha> on deploy; the tag below
+# is only the fallback for a manual `kubectl apply`. Replace <owner> with your GH user.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pcb2stl
+  namespace: production
+  labels:
+    app: pcb2stl
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pcb2stl
+  template:
+    metadata:
+      labels:
+        app: pcb2stl
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pcb2stl
+          image: ghcr.io/leohammes/pcb2stl:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - { name: PCB2STL_POOL_WORKERS, value: "2" }
+            - { name: PCB2STL_MAX_CONCURRENT, value: "2" }
+            - { name: PCB2STL_CONVERT_TIMEOUT_S, value: "25" }
+            - { name: PCB2STL_ALLOWED_ORIGINS, value: "https://pcb2stl.online" }
+          resources:
+            requests:
+              memory: "384Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1500m"
+          readinessProbe:
+            httpGet:
+              path: /api/formats
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/formats
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pcb2stl
+  namespace: production
+spec:
+  selector:
+    app: pcb2stl
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: pcb2stl-ratelimit
+  namespace: production
+spec:
+  rateLimit:
+    average: 30
+    burst: 60
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pcb2stl-ingress
+  namespace: production
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare-issuer
+    traefik.ingress.kubernetes.io/router.middlewares: production-pcb2stl-ratelimit@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - pcb2stl.online
+      secretName: pcb2stl-tls
+  rules:
+    - host: pcb2stl.online
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pcb2stl
+                port:
+                  number: 80

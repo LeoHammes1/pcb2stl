@@ -3,59 +3,132 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>pcb2stl — PCB to STL for pen plotting</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; }
-    #app { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
-    #panel { padding: 20px; border-right: 1px solid #262a31; overflow-y: auto; }
-    #panel h1 { font-size: 18px; margin: 0 0 4px; }
-    #panel .sub { color: #8a909b; font-size: 12px; margin-bottom: 20px; }
-    label { display: block; font-size: 13px; margin: 14px 0 4px; color: #b8bdc7; }
-    input[type=file], input[type=number] { width: 100%; padding: 8px; background: #1a1d23;
-      border: 1px solid #2c313a; border-radius: 6px; color: #e6e6e6; }
-    .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
-    button { width: 100%; padding: 10px; margin-top: 18px; border: 0; border-radius: 6px;
-      font-size: 14px; font-weight: 600; cursor: pointer; }
-    #convert { background: #3b82f6; color: #fff; }
-    #download { background: #1f2937; color: #e6e6e6; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    #status { margin-top: 16px; font-size: 13px; min-height: 18px; color: #9ca3af; }
-    #status.error { color: #f87171; }
-    #dims { margin-top: 8px; font-size: 13px; color: #6ee7b7; }
-    #viewer { position: relative; }
-  </style>
+  <title>pcb2stl — copper to STL or pen G-code</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <div id="app">
     <aside id="panel">
-      <h1>pcb2stl</h1>
-      <div class="sub">PCB copper → manifold STL for pen-plotting etch resist.</div>
-
-      <label for="file">Gerber or SVG file</label>
-      <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg" />
-
-      <label for="height">Layer height (mm)</label>
-      <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
-
-      <div class="row">
-        <input id="mirror" type="checkbox" />
-        <label for="mirror" style="margin:0">Mirror (for direct drawing)</label>
+      <canvas class="trace-bg" id="traceBg" aria-hidden="true"></canvas>
+      <div class="brand">
+        <h1>pcb2stl</h1>
+        <p>Copper → STL or pen G-code</p>
       </div>
 
-      <button id="convert">Convert &amp; preview</button>
-      <button id="download" disabled>Download STL</button>
+      <div class="card">
+        <div class="eyebrow">Source</div>
+        <label class="dropzone" id="drop">
+          <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+          <div id="dropLabel">⤓ Drop or click — Gerber / SVG / DXF</div>
+          <div class="name hidden" id="fileName"></div>
+        </label>
+        <label class="dropzone bottom hidden" id="bottomRow">
+          <input id="file2" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+          <div>⤓ Bottom layer — optional, adds double-sided</div>
+          <div class="name hidden" id="file2Name"></div>
+        </label>
+        <div class="switch">
+          <input id="mirror" type="checkbox" />
+          <label for="mirror">Mirror (direct drawing)</label>
+        </div>
+      </div>
 
-      <div id="status"></div>
-      <div id="dims"></div>
+      <div class="card">
+        <div class="eyebrow">Settings</div>
+
+        <div class="field">
+          <label for="format">Output</label>
+          <select id="format" aria-label="Output format">
+            <option value="stl">STL · for slicer</option>
+            <option value="gcode">G-code · pen plotter (.gcode)</option>
+          </select>
+        </div>
+
+        <div id="stlOpts">
+          <div class="field">
+            <label for="height">Layer height (mm)</label>
+            <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
+          </div>
+        </div>
+
+        <div id="gcodeOpts" class="hidden">
+          <div class="group-eyebrow">Pen</div>
+          <div class="grid-2">
+            <div class="field"><label for="penWidth">Pen width</label><input id="penWidth" type="number" value="0.4" min="0.05" step="0.05" /></div>
+            <div class="field"><label for="perimeters">Perimeters</label><input id="perimeters" type="number" value="2" min="1" step="1" /></div>
+          </div>
+          <div class="switch" style="margin-top:10px"><input id="fill" type="checkbox" checked /><label for="fill">Fill copper areas</label></div>
+          <details id="gcodeAdvanced">
+            <summary>Advanced</summary>
+            <div class="group-eyebrow">Motion</div>
+            <div class="grid-2">
+              <div class="field"><label for="drawZ">Draw Z</label><input id="drawZ" type="number" value="0" step="0.1" /></div>
+              <div class="field"><label for="travelZ">Travel Z</label><input id="travelZ" type="number" value="2" step="0.1" /></div>
+              <div class="field"><label for="drawFeed">Draw feed</label><input id="drawFeed" type="number" value="1200" min="1" step="100" /></div>
+              <div class="field"><label for="travelFeed">Travel feed</label><input id="travelFeed" type="number" value="3000" min="1" step="100" /></div>
+            </div>
+            <div class="group-eyebrow">Pen lift</div>
+            <div class="field">
+              <label for="liftMode">Lift mode</label>
+              <select id="liftMode">
+                <option value="z">Z axis (pen mount)</option>
+                <option value="servo">Servo (M280)</option>
+              </select>
+            </div>
+            <div id="servoOpts" class="hidden">
+              <div class="grid-3">
+                <div class="field"><label for="servoUp">Up °</label><input id="servoUp" type="number" value="90" step="1" /></div>
+                <div class="field"><label for="servoDown">Down °</label><input id="servoDown" type="number" value="40" step="1" /></div>
+                <div class="field"><label for="servoDwell">Dwell ms</label><input id="servoDwell" type="number" value="300" min="0" step="50" /></div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="card hidden" id="placementCard">
+        <div class="eyebrow">Placement</div>
+        <div class="grid-3">
+          <div class="field"><label for="boardMargin">Margin</label><input id="boardMargin" type="number" value="3" min="0" step="0.5" /></div>
+          <div class="field"><label for="originX">Origin X</label><input id="originX" type="number" value="10" step="1" /></div>
+          <div class="field"><label for="originY">Origin Y</label><input id="originY" type="number" value="10" step="1" /></div>
+        </div>
+        <div class="field"><label for="boardThickness">Board thickness (mm)</label><input id="boardThickness" type="number" value="1.6" min="0.1" step="0.1" /></div>
+        <button class="btn btn-tertiary" id="jig" type="button">⤓ Download placement jig</button>
+      </div>
+
+      <div class="card action" id="exportBus">
+        <div class="status" id="status"><span class="dot"></span><span id="statusText">Load a board — Gerber / SVG / DXF</span></div>
+        <div class="dims" id="dims"></div>
+        <button class="btn btn-primary" id="download" disabled>⤓ Download .stl</button>
+      </div>
+
+      <footer class="panel-foot">
+        <a class="foot-repo" href="https://github.com/LeoHammes1/pcb2stl" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          <span>Source on GitHub</span>
+        </a>
+        <a class="foot-by" href="https://leohammes.dev" target="_blank" rel="noopener noreferrer">
+          Developed by <span class="foot-name">Leohammes</span>
+        </a>
+      </footer>
     </aside>
-    <main id="viewer"></main>
+
+    <main id="viewer">
+      <button class="fit-btn" id="fit">⤢ Fit</button>
+      <div class="legend hidden" id="legend">
+        <div class="legend-row">
+          <span class="legend-item"><span class="swatch" style="--c:#FBBF24"></span>perimeter</span>
+          <span class="legend-item"><span class="swatch" style="--c:#B45309"></span>fill</span>
+          <span class="legend-item"><span class="swatch dash" style="--c:#6A7180"></span>travel</span>
+        </div>
+        <div class="switch"><input id="hideTravel" type="checkbox" /><label for="hideTravel">hide travel</label></div>
+      </div>
+      <div class="origin-label hidden" id="originLabel"></div>
+    </main>
   </div>
 
-  <script type="importmap">
-    { "imports": { "three": "./vendor/three.module.js" } }
-  </script>
+  <script type="module" src="./traces-bg.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

@@ -68,3 +68,34 @@ def test_svg_without_physical_size_treats_user_units_as_mm():
     )
     drawing = SvgParser().parse(svg.encode())
     assert drawing.bounds == pytest.approx((2.0, 2.0, 8.0, 6.0), abs=0.01)
+
+
+def test_billion_laughs_svg_is_rejected():
+    bomb = (
+        '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">'
+        '<!ENTITY lol2 "&lol;&lol;">]><svg xmlns="http://www.w3.org/2000/svg">&lol2;</svg>'
+    )
+    with pytest.raises(ValueError):
+        SvgParser().parse(bomb.encode())
+
+
+def test_xxe_external_entity_svg_is_rejected():
+    xxe = (
+        '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+        '<svg xmlns="http://www.w3.org/2000/svg">&xxe;</svg>'
+    )
+    with pytest.raises(ValueError):
+        SvgParser().parse(xxe.encode())
+
+
+def test_standard_svg_doctype_is_accepted():
+    # KiCad and other tools emit the standard SVG 1.1 DTD reference -- it must parse
+    svg = (
+        '<?xml version="1.0" standalone="no"?>\n'
+        '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" '
+        '"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n'
+        '<svg xmlns="http://www.w3.org/2000/svg" width="20mm" height="10mm" viewBox="0 0 20 10">'
+        '<rect x="2" y="2" width="6" height="4" fill="black"/></svg>'
+    )
+    drawing = SvgParser().parse(svg.encode())
+    assert not drawing.is_empty

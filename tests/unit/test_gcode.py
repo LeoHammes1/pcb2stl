@@ -1,0 +1,56 @@
+import re
+
+import pytest
+
+from pcb2stl.domain import PenParams
+from pcb2stl.gcode import render_gcode
+
+PATHS = [((0.0, 0.0), (10.0, 0.0), (10.0, 10.0)), ((2.0, 2.0), (8.0, 2.0))]
+
+
+def test_servo_lift_emits_m280_and_dwell_not_z_moves():
+    text = render_gcode(PATHS, PenParams(lift_mode="servo", servo_up_deg=85, servo_down_deg=35, servo_dwell_ms=250))
+    assert "M280 P0 S85" in text and "M280 P0 S35" in text
+    assert "G4 P250" in text
+    assert "G1 Z" not in text  # servo mode never moves Z for the pen
+
+
+def test_invalid_lift_mode_is_rejected():
+    with pytest.raises(ValueError):
+        PenParams(lift_mode="laser")
+
+
+def test_no_extrusion_no_heating_no_fan():
+    text = render_gcode(PATHS, PenParams())
+    assert re.search(r"[ \t]E-?\d", text) is None  # never an extrusion argument
+    for forbidden in ("M104", "M109", "M140", "M190", "M106", "M107"):
+        assert forbidden not in text
+
+
+def test_preamble_units_home_and_motor_disable():
+    text = render_gcode(PATHS, PenParams())
+    assert "G21" in text and "G90" in text and "G28" in text
+    assert text.strip().endswith("M84")
+
+
+def test_header_reports_stroke_and_travel_stats():
+    text = render_gcode(PATHS, PenParams())
+    assert re.search(r"; strokes \d+, draw \d+ mm, travel \d+ mm", text)
+
+
+def test_pen_lowers_to_draw_and_raises_to_travel():
+    text = render_gcode(PATHS, PenParams(draw_z_mm=0.0, travel_z_mm=2.0))
+    assert "Z0.000" in text  # pen down
+    assert "Z2.000" in text  # pen up
+
+
+def test_travel_is_g0_and_drawing_is_g1():
+    text = render_gcode([((0.0, 0.0), (5.0, 0.0))], PenParams(origin_x_mm=0.0, origin_y_mm=0.0, board_margin_mm=0.0))
+    assert "G0 X0.000 Y0.000" in text  # rapid to the start with the pen up
+    assert "G1 X5.000 Y0.000" in text  # drawing stroke
+
+
+def test_origin_and_margin_offset_the_coordinates():
+    text = render_gcode([((0.0, 0.0), (5.0, 5.0))], PenParams(origin_x_mm=10.0, origin_y_mm=10.0, board_margin_mm=3.0))
+    assert "X13.000 Y13.000" in text  # copper min lands at origin + margin
+    assert "X18.000 Y18.000" in text
