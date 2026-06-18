@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>pcb2stl — PCB to STL for pen plotting</title>
+  <title>pcb2stl — PCB to STL / G-code for pen plotting</title>
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
@@ -13,9 +13,10 @@
     #panel h1 { font-size: 18px; margin: 0 0 4px; }
     #panel .sub { color: #8a909b; font-size: 12px; margin-bottom: 20px; }
     label { display: block; font-size: 13px; margin: 14px 0 4px; color: #b8bdc7; }
-    input[type=file], input[type=number] { width: 100%; padding: 8px; background: #1a1d23;
+    input[type=file], input[type=number], select { width: 100%; padding: 8px; background: #1a1d23;
       border: 1px solid #2c313a; border-radius: 6px; color: #e6e6e6; }
     .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+    .row label { margin: 0; }
     button { width: 100%; padding: 10px; margin-top: 18px; border: 0; border-radius: 6px;
       font-size: 14px; font-weight: 600; cursor: pointer; }
     #convert { background: #3b82f6; color: #fff; }
@@ -31,7 +32,13 @@
   <div id="app">
     <aside id="panel">
       <h1>pcb2stl</h1>
-      <div class="sub">PCB copper → manifold STL for pen-plotting etch resist.</div>
+      <div class="sub">PCB copper → STL for your slicer, or G-code straight for a pen plotter.</div>
+
+      <label for="output">Output</label>
+      <select id="output">
+        <option value="stl">STL (for your slicer)</option>
+        <option value="gcode">G-code (pen plotter, no slicer)</option>
+      </select>
 
       <label id="fileLabel" for="file">Gerber, SVG or DXF file</label>
       <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
@@ -41,21 +48,37 @@
         <input id="file2" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
       </div>
 
-      <label for="height">Layer height (mm)</label>
-      <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
+      <div id="stlOpts">
+        <label for="height">Layer height (mm)</label>
+        <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
+        <div class="row">
+          <input id="double" type="checkbox" />
+          <label for="double">Double-sided (top + bottom)</label>
+        </div>
+      </div>
+
+      <div id="gcodeOpts" style="display:none">
+        <label for="penWidth">Pen width (mm)</label>
+        <input id="penWidth" type="number" value="0.4" min="0.05" step="0.05" />
+        <label for="perimeters">Perimeters</label>
+        <input id="perimeters" type="number" value="2" min="1" step="1" />
+        <label for="drawZ">Draw Z (mm, pen on board)</label>
+        <input id="drawZ" type="number" value="0" step="0.1" />
+        <label for="travelZ">Travel Z (mm, pen lifted)</label>
+        <input id="travelZ" type="number" value="2" step="0.1" />
+        <label for="drawFeed">Draw feed (mm/min)</label>
+        <input id="drawFeed" type="number" value="1200" min="1" step="100" />
+        <label for="travelFeed">Travel feed (mm/min)</label>
+        <input id="travelFeed" type="number" value="3000" min="1" step="100" />
+      </div>
 
       <div class="row" id="mirrorRow">
         <input id="mirror" type="checkbox" />
-        <label for="mirror" style="margin:0">Mirror (for direct drawing)</label>
-      </div>
-
-      <div class="row">
-        <input id="double" type="checkbox" />
-        <label for="double" style="margin:0">Double-sided (top + bottom)</label>
+        <label for="mirror">Mirror (for direct drawing)</label>
       </div>
 
       <button id="convert">Convert &amp; preview</button>
-      <button id="download" disabled>Download STL</button>
+      <button id="download" disabled>Download</button>
 
       <div id="status"></div>
       <div id="dims"></div>

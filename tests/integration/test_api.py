@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 from pathlib import Path
 
@@ -58,6 +59,29 @@ def test_convert_double_returns_a_zip_of_two_watertight_stls():
     for name in archive.namelist():
         mesh = trimesh.load(io.BytesIO(archive.read(name)), file_type="stl")
         assert mesh.is_watertight
+
+
+def test_gcode_endpoint_returns_pen_plotter_program():
+    response = client.post(
+        "/api/gcode",
+        files={"file": ("board.gbr", GERBER, "application/octet-stream")},
+        data={"pen_width_mm": "0.5", "perimeters": "2"},
+    )
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+    assert "board.gcode" in response.headers["content-disposition"]
+    body = response.text
+    assert "G28" in body and "M84" in body
+    assert re.search(r"[ \t]E-?\d", body) is None
+
+
+def test_gcode_endpoint_rejects_invalid_pen_width():
+    response = client.post(
+        "/api/gcode",
+        files={"file": ("board.gbr", GERBER, "application/octet-stream")},
+        data={"pen_width_mm": "0"},
+    )
+    assert response.status_code == 400
 
 
 def test_unsupported_format_returns_415():

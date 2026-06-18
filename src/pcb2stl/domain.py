@@ -46,3 +46,28 @@ class ConversionParams:
     def __post_init__(self) -> None:
         if self.height_mm <= 0:
             raise ValueError("height_mm must be positive")
+
+
+@dataclass(frozen=True)
+class PenParams:
+    """Pen-plotter toolpath and motion settings (millimetres, mm/min)."""
+
+    pen_width_mm: float = 0.4
+    perimeters: int = 2
+    fill: bool = True
+    mirror: bool = False
+    draw_z_mm: float = 0.0
+    travel_z_mm: float = 2.0
+    draw_feed: float = 1200.0
+    travel_feed: float = 3000.0
+    z_feed: float = 600.0
+
+    def __post_init__(self) -> None:
+        if self.pen_width_mm <= 0:
+            raise ValueError("pen_width_mm must be positive")
+        if self.perimeters < 1:
+            raise ValueError("perimeters must be at least 1")
+        if self.travel_z_mm <= self.draw_z_mm:
+            raise ValueError("travel_z_mm must be above draw_z_mm")
+        if min(self.draw_feed, self.travel_feed, self.z_feed) <= 0:
+            raise ValueError("feed rates must be positive")

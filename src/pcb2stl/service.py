@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from .domain import ConversionParams, Drawing
+from .domain import ConversionParams, Drawing, PenParams
+from .gcode import render_gcode
 from .meshing import ManifoldMesher, Mesher
 from .parsing.base import ParserResolver
 from .parsing.dxf import DxfParser
 from .parsing.gerber import GerberParser
 from .parsing.svg import SvgParser
 from .registration import combined_bounds, registration_marks
+from .toolpaths import generate_toolpaths
 
 _GERBER_EXTENSIONS = ("gbr", "ger", "gtl", "gbl", "gto", "gbo", "gko", "gm1", "art")
 
@@ -51,6 +53,11 @@ class ConversionService:
         top_stl = self._mesher.mesh(_with(top_drawing, marks), replace(params, mirror=False))
         bottom_stl = self._mesher.mesh(_with(bottom_drawing, marks), replace(params, mirror=True))
         return top_stl, bottom_stl
+
+    def convert_to_gcode(self, filename: str, data: bytes, pen: PenParams) -> str:
+        """Skip the slicer: emit pen-plotter G-code straight from the copper."""
+        drawing = self._parse(filename, data)
+        return render_gcode(generate_toolpaths(drawing, pen), pen)
 
     def _parse(self, filename: str, data: bytes) -> Drawing:
         parser = self._resolver.resolve(filename)

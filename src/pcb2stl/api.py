@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
-from .domain import ConversionParams
+from .domain import ConversionParams, PenParams
 from .parsing.base import UnsupportedFormatError
 from .service import ConversionService, EmptyDrawingError, default_service
 
@@ -61,6 +61,33 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
             headers={"Content-Disposition": 'attachment; filename="pcb2stl-double-sided.zip"'},
         )
 
+    @app.post("/api/gcode")
+    async def gcode(
+        file: UploadFile = File(...),
+        pen_width_mm: float = Form(0.4),
+        perimeters: int = Form(2),
+        fill: bool = Form(True),
+        mirror: bool = Form(False),
+        draw_z_mm: float = Form(0.0),
+        travel_z_mm: float = Form(2.0),
+        draw_feed: float = Form(1200.0),
+        travel_feed: float = Form(3000.0),
+        z_feed: float = Form(600.0),
+    ) -> Response:
+        pen = _pen(
+            pen_width_mm, perimeters, fill, mirror,
+            draw_z_mm, travel_z_mm, draw_feed, travel_feed, z_feed,
+        )
+        _check_size(file)
+        data = await file.read()
+        text = _map_errors(lambda: service.convert_to_gcode(file.filename or "", data, pen))
+        download = f"{Path(file.filename or 'board').stem}.gcode"
+        return Response(
+            content=text,
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{download}"'},
+        )
+
     if _WEB_DIR.is_dir():
         app.mount("/", StaticFiles(directory=_WEB_DIR, html=True), name="web")
 
@@ -70,6 +97,33 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
 def _params(height_mm: float, mirror: bool) -> ConversionParams:
     try:
         return ConversionParams(height_mm=height_mm, mirror=mirror)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def _pen(
+    pen_width_mm: float,
+    perimeters: int,
+    fill: bool,
+    mirror: bool,
+    draw_z_mm: float,
+    travel_z_mm: float,
+    draw_feed: float,
+    travel_feed: float,
+    z_feed: float,
+) -> PenParams:
+    try:
+        return PenParams(
+            pen_width_mm=pen_width_mm,
+            perimeters=perimeters,
+            fill=fill,
+            mirror=mirror,
+            draw_z_mm=draw_z_mm,
+            travel_z_mm=travel_z_mm,
+            draw_feed=draw_feed,
+            travel_feed=travel_feed,
+            z_feed=z_feed,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

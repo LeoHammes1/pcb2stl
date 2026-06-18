@@ -4,9 +4,10 @@ Convert a PCB copper layer (**Gerber**, **SVG** or **DXF**) into a watertight **
 you can slice in any FDM slicer and "print" with a pen — to draw etch-resist directly
 onto copper-clad board (3D-printer pen plotter, then etch).
 
-The slicer stays yours: its line-width, infill and travel settings give you full
-control over how the pen fills traces and pads. pcb2stl only does the part the
-slicer can't — turning copper artwork into a clean, manifold solid.
+Two outputs: a clean **STL** to slice yourself, or **G-code straight for a pen
+plotter** — perimeters plus fill, pen up/down on Z, with no extrusion, heating or
+fan commands. Use the slicer when you want its tuning; skip it when you just want
+to draw.
 
 ## Quick start
 
@@ -43,6 +44,20 @@ is just adding a parser — nothing else changes.
 - **Extrusion/line width = your pen width** so each trace is covered in one stroke.
 - **Z-hop on travel** to lift the pen between strokes (or use a spring-loaded pen mount).
 - Strip extrusion (`E`) in a post-processor, or ignore it on a pen toolhead.
+
+## Direct G-code (no slicer)
+
+Pick *G-code* as the output to drive a 3D-printer pen mod (e.g. an Ender 3 V2 with
+the extruder removed) directly. pcb2stl fills each copper region with concentric
+perimeters and a zig-zag, and emits Marlin G-code that only moves X/Y and lifts the
+pen on Z — no `E`, no `M104/M109`, no fan.
+
+- Set **pen width** to your marker, **draw Z** to where the pen meets the board, and
+  **travel Z** to a safe lift height. Calibrate draw Z against your bed.
+- The pen is raised/lowered with Z (works for a fixed or spring-loaded mount). Homing
+  (`G28`) runs first, so the board origin must match the printer's.
+- Targets Marlin (Ender-class). Bambu printers are locked down and need their own
+  toolchain, so plain G-code is not guaranteed there.
 
 ## Local development
 

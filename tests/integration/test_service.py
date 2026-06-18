@@ -1,10 +1,11 @@
 import io
+import re
 from pathlib import Path
 
 import pytest
 import trimesh
 
-from pcb2stl.domain import ConversionParams
+from pcb2stl.domain import ConversionParams, PenParams
 from pcb2stl.parsing.base import UnsupportedFormatError
 from pcb2stl.service import ConversionService, EmptyDrawingError, default_service
 
@@ -59,6 +60,13 @@ def test_double_sided_makes_two_mirror_image_meshes_with_fiducials():
     plain = _load(service.convert("c.gbr", GERBER, params))
     assert top_mesh.body_count == plain.body_count + 2
     assert bottom_mesh.body_count == plain.body_count + 2
+
+
+def test_gcode_from_gerber_has_no_extrusion_or_heating():
+    text = default_service().convert_to_gcode("board.gbr", GERBER, PenParams(pen_width_mm=0.5))
+    assert "G28" in text and text.strip().endswith("M84")
+    assert re.search(r"[ \t]E-?\d", text) is None
+    assert not any(code in text for code in ("M104", "M109", "M140", "M190", "M106"))
 
 
 def test_unsupported_extension_is_rejected():
