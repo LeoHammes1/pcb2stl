@@ -2,23 +2,40 @@ from __future__ import annotations
 
 import io
 import zipfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
+from . import config, runner, worker
 from .domain import ConversionParams, JigParams, PenParams
 from .parsing.base import UnsupportedFormatError
-from .service import ConversionService, EmptyDrawingError, default_service
+from .runner import ConversionTimeout, OverloadError, offload
+from .service import (
+    ComplexityError,
+    ConversionService,
+    EmptyDrawingError,
+    OutputTooLargeError,
+    default_service,
+)
 
 _WEB_DIR = Path(__file__).resolve().parent / "web"
-_MAX_UPLOAD_BYTES = 16 * 1024 * 1024
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    runner.start_pool()
+    try:
+        yield
+    finally:
+        runner.stop_pool()
 
 
 def create_app(service: ConversionService | None = None) -> FastAPI:
     service = service or default_service()
-    app = FastAPI(title="pcb2stl", version="0.1.0")
+    app = FastAPI(title="pcb2stl", version="0.1.0", lifespan=_lifespan)
 
     @app.get("/api/formats")
     def formats() -> dict[str, list[str]]:
@@ -31,9 +48,8 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
         mirror: bool = Form(False),
     ) -> Response:
         params = _params(height_mm, mirror)
-        _check_size(file)
-        data = await file.read()
-        stl = _map_errors(lambda: service.convert(file.filename or "", data, params))
+        data = await _read(file)
+        stl = await _run(worker.convert_job, file.filename or "", data, params)
         return _stl_response(stl, f"{Path(file.filename or 'board').stem}.stl")
 
     @app.post("/api/convert-double")
@@ -43,16 +59,11 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
         height_mm: float = Form(0.2),
     ) -> Response:
         params = _params(height_mm, mirror=False)
-        _check_size(top)
-        _check_size(bottom)
-        top_data = await top.read()
-        bottom_data = await bottom.read()
-        top_stl, bottom_stl = _map_errors(
-            lambda: service.convert_double_sided(
-                (top.filename or "top", top_data),
-                (bottom.filename or "bottom", bottom_data),
-                params,
-            )
+        top_data = await _read(top)
+        bottom_data = await _read(bottom)
+        top_stl, bottom_stl = await _run(
+            worker.double_job,
+            top.filename or "top", top_data, bottom.filename or "bottom", bottom_data, params,
         )
         archive = _zip({"top.stl": top_stl, "bottom-mirrored.stl": bottom_stl})
         return Response(
@@ -81,9 +92,8 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
             pen_width_mm, perimeters, fill, mirror, draw_z_mm, travel_z_mm,
             draw_feed, travel_feed, z_feed, origin_x_mm, origin_y_mm, board_margin_mm,
         )
-        _check_size(file)
-        data = await file.read()
-        text = _map_errors(lambda: service.convert_to_gcode(file.filename or "", data, pen))
+        data = await _read(file)
+        text = await _run(worker.gcode_job, file.filename or "", data, pen)
         download = f"{Path(file.filename or 'board').stem}.gcode"
         return Response(
             content=text,
@@ -106,9 +116,8 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
             pen_width_mm, perimeters, fill, mirror, 0.0, 2.0,
             1200.0, 3000.0, 600.0, origin_x_mm, origin_y_mm, board_margin_mm,
         )
-        _check_size(file)
-        data = await file.read()
-        return _map_errors(lambda: service.toolpath_preview(file.filename or "", data, pen))
+        data = await _read(file)
+        return await _run(worker.toolpaths_job, file.filename or "", data, pen)
 
     @app.post("/api/jig")
     async def jig(
@@ -117,9 +126,8 @@ def create_app(service: ConversionService | None = None) -> FastAPI:
         board_margin_mm: float = Form(3.0),
     ) -> Response:
         params = _jig(board_thickness_mm, board_margin_mm)
-        _check_size(file)
-        data = await file.read()
-        stl = _map_errors(lambda: service.make_jig(file.filename or "", data, params))
+        data = await _read(file)
+        stl = await _run(worker.jig_job, file.filename or "", data, params)
         return _stl_response(stl, f"{Path(file.filename or 'board').stem}-jig.stl")
 
     if _WEB_DIR.is_dir():
@@ -175,18 +183,28 @@ def _jig(board_thickness_mm: float, board_margin_mm: float) -> JigParams:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _check_size(file: UploadFile) -> None:
-    if file.size is not None and file.size > _MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="file too large (max 16 MB)")
+async def _read(file: UploadFile) -> bytes:
+    if file.size is not None and file.size > config.MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="file too large")
+    data = await file.read()
+    if len(data) > config.MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="file too large")
+    return data
 
 
-def _map_errors(action):
+async def _run(fn, *args):
     try:
-        return action()
+        return await offload(fn, *args)
     except UnsupportedFormatError as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
-    except EmptyDrawingError as exc:
+    except (EmptyDrawingError, ComplexityError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OutputTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except OverloadError as exc:
+        raise HTTPException(status_code=503, detail="server busy, retry shortly", headers={"Retry-After": "5"}) from exc
+    except ConversionTimeout as exc:
+        raise HTTPException(status_code=504, detail="conversion timed out") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"could not parse input: {exc}") from exc
 

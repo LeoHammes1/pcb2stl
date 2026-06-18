@@ -5,9 +5,16 @@ from pathlib import Path
 import pytest
 import trimesh
 
+from pcb2stl import config
 from pcb2stl.domain import ConversionParams, JigParams, PenParams
 from pcb2stl.parsing.base import UnsupportedFormatError
-from pcb2stl.service import ConversionService, EmptyDrawingError, default_service
+from pcb2stl.service import (
+    ComplexityError,
+    ConversionService,
+    EmptyDrawingError,
+    OutputTooLargeError,
+    default_service,
+)
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 GERBER = (FIXTURES / "sample.gbr").read_bytes()
@@ -83,6 +90,24 @@ def test_jig_for_a_board_is_a_watertight_solid():
     assert mesh.is_watertight
     assert mesh.volume > 0.0
     assert mesh.bounds[1][2] == pytest.approx(1.6, abs=0.01)  # walls at board thickness
+
+
+def test_complexity_cap_rejects_too_many_polygons(monkeypatch):
+    monkeypatch.setattr(config, "MAX_POLYGONS", 1)
+    with pytest.raises(ComplexityError):
+        default_service().convert("board.gbr", GERBER, ConversionParams())
+
+
+def test_complexity_cap_rejects_oversized_extent(monkeypatch):
+    monkeypatch.setattr(config, "MAX_EXTENT_MM", 1.0)
+    with pytest.raises(ComplexityError):
+        default_service().convert("board.gbr", GERBER, ConversionParams())
+
+
+def test_output_ceiling_rejects_huge_mesh(monkeypatch):
+    monkeypatch.setattr(config, "MAX_OUTPUT_BYTES", 10)
+    with pytest.raises(OutputTooLargeError):
+        default_service().convert("board.gbr", GERBER, ConversionParams())
 
 
 def test_unsupported_extension_is_rejected():

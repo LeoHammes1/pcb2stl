@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from . import config
 from .domain import ConversionParams, Drawing, JigParams, PenParams
 from .gcode import render_gcode
 from .jig import build_jig_stl
@@ -28,6 +29,14 @@ class ParseError(ValueError):
         self.filename = filename
 
 
+class ComplexityError(ValueError):
+    """The parsed geometry exceeds the configured vertex/polygon/extent caps."""
+
+
+class OutputTooLargeError(ValueError):
+    """The produced mesh exceeds the configured output-size ceiling."""
+
+
 class ConversionService:
     def __init__(self, resolver: ParserResolver, mesher: Mesher) -> None:
         self._resolver = resolver
@@ -38,7 +47,7 @@ class ConversionService:
         return self._resolver.extensions
 
     def convert(self, filename: str, data: bytes, params: ConversionParams) -> bytes:
-        return self._mesher.mesh(self._parse(filename, data), params)
+        return _capped(self._mesher.mesh(self._parse(filename, data), params))
 
     def convert_double_sided(
         self,
@@ -53,7 +62,7 @@ class ConversionService:
         marks = registration_marks(combined_bounds(top_drawing, bottom_drawing))
         top_stl = self._mesher.mesh(_with(top_drawing, marks), replace(params, mirror=False))
         bottom_stl = self._mesher.mesh(_with(bottom_drawing, marks), replace(params, mirror=True))
-        return top_stl, bottom_stl
+        return _capped(top_stl), _capped(bottom_stl)
 
     def convert_to_gcode(self, filename: str, data: bytes, pen: PenParams) -> str:
         """Skip the slicer: emit pen-plotter G-code straight from the copper."""
@@ -81,7 +90,7 @@ class ConversionService:
     def make_jig(self, filename: str, data: bytes, jig: JigParams) -> bytes:
         """A printable corner jig sized to the board, to seat it at the work origin."""
         minx, miny, maxx, maxy = self._parse(filename, data).bounds
-        return build_jig_stl(maxx - minx, maxy - miny, jig)
+        return _capped(build_jig_stl(maxx - minx, maxy - miny, jig))
 
     def _parse(self, filename: str, data: bytes) -> Drawing:
         parser = self._resolver.resolve(filename)
@@ -91,7 +100,23 @@ class ConversionService:
             raise ParseError(filename, exc) from exc
         if drawing.is_empty:
             raise EmptyDrawingError(filename)
+        _check_complexity(drawing)
         return drawing
+
+
+def _check_complexity(drawing: Drawing) -> None:
+    vertices = sum(len(p.exterior) + sum(len(h) for h in p.holes) for p in drawing.polygons)
+    if len(drawing.polygons) > config.MAX_POLYGONS or vertices > config.MAX_VERTICES:
+        raise ComplexityError("geometry has too many polygons or vertices")
+    minx, miny, maxx, maxy = drawing.bounds
+    if max(maxx - minx, maxy - miny) > config.MAX_EXTENT_MM:
+        raise ComplexityError("geometry extent exceeds the limit")
+
+
+def _capped(stl: bytes) -> bytes:
+    if len(stl) > config.MAX_OUTPUT_BYTES:
+        raise OutputTooLargeError("produced mesh exceeds the output-size ceiling")
+    return stl
 
 
 def _with(drawing: Drawing, marks: tuple) -> Drawing:

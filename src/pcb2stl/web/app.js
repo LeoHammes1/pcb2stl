@@ -18,8 +18,9 @@ let regenTimer = null;
 let pendingFit = false;
 let firstFit = false;
 let cachedStl = null;
+let controller = null;
 
-NUM.forEach((id) => els[id].addEventListener('input', () => scheduleRegen(300, false)));
+NUM.forEach((id) => els[id].addEventListener('input', () => scheduleRegen(500, false)));
 ['mirror', 'fill'].forEach((id) => els[id].addEventListener('change', () => scheduleRegen(80, false)));
 els.format.addEventListener('change', () => { applyFormat(els.format.value); scheduleRegen(0, true); });
 els.hideTravel.addEventListener('change', () => viewer.setTravelVisible(!els.hideTravel.checked));
@@ -60,6 +61,9 @@ async function regen() {
     els.download.disabled = true;
     return;
   }
+  if (controller) controller.abort();
+  controller = new AbortController();
+  const signal = controller.signal;
   const format = els.format.value;
   const mySeq = ++seq;
   setStatus('Previewing…', 'busy');
@@ -68,8 +72,8 @@ async function regen() {
   try {
     if (format === 'gcode') {
       const [paths, stl] = await Promise.all([
-        postJson('/api/toolpaths', formWith(file, geomFields())),
-        postBinary('/api/convert', formWith(file, { height_mm: '0.2', mirror: bool(els.mirror) })),
+        postJson('/api/toolpaths', formWith(file, geomFields()), signal),
+        postBinary('/api/convert', formWith(file, { height_mm: '0.2', mirror: bool(els.mirror) }), signal),
       ]);
       if (mySeq !== seq) return;
       cachedStl = null;
@@ -81,7 +85,7 @@ async function regen() {
       setStats(paths.stats);
       showDims(dims);
     } else {
-      const buffer = await postBinary('/api/convert', formWith(file, { height_mm: els.height.value, mirror: bool(els.mirror) }));
+      const buffer = await postBinary('/api/convert', formWith(file, { height_mm: els.height.value, mirror: bool(els.mirror) }), signal);
       if (mySeq !== seq) return;
       cachedStl = new Blob([buffer], { type: 'model/stl' });
       const dims = viewer.showSolid(buffer.slice(0));
@@ -96,6 +100,7 @@ async function regen() {
     }
     settle(format);
   } catch (err) {
+    if (err.name === 'AbortError') return;
     if (mySeq === seq) {
       setStatus(err.message, 'err');
       els.download.disabled = true;
@@ -168,9 +173,9 @@ function archive() {
   return form;
 }
 
-async function postBinary(url, form) { return (await ok(await fetch(url, { method: 'POST', body: form }))).arrayBuffer(); }
-async function postText(url, form) { return (await ok(await fetch(url, { method: 'POST', body: form }))).text(); }
-async function postJson(url, form) { return (await ok(await fetch(url, { method: 'POST', body: form }))).json(); }
+async function postBinary(url, form, signal) { return (await ok(await fetch(url, { method: 'POST', body: form, signal }))).arrayBuffer(); }
+async function postText(url, form, signal) { return (await ok(await fetch(url, { method: 'POST', body: form, signal }))).text(); }
+async function postJson(url, form, signal) { return (await ok(await fetch(url, { method: 'POST', body: form, signal }))).json(); }
 
 async function ok(res) {
   if (res.ok) return res;

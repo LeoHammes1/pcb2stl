@@ -19,6 +19,11 @@ EMPTY_SVG = b'<svg xmlns="http://www.w3.org/2000/svg" width="10mm" height="10mm"
 client = TestClient(create_app())
 
 
+@pytest.fixture(autouse=True)
+def _inline(monkeypatch):
+    monkeypatch.setattr("pcb2stl.config.INLINE", True)
+
+
 def test_convert_gerber_returns_a_watertight_stl_attachment():
     response = client.post(
         "/api/convert",
@@ -156,9 +161,7 @@ def test_binary_garbage_returns_400():
 
 
 def test_oversized_upload_is_rejected_with_413(monkeypatch):
-    import pcb2stl.api as api_module
-
-    monkeypatch.setattr(api_module, "_MAX_UPLOAD_BYTES", 8)
+    monkeypatch.setattr("pcb2stl.config.MAX_UPLOAD_BYTES", 8)
     response = client.post(
         "/api/convert", files={"file": ("board.gbr", GERBER, "application/octet-stream")}
     )
