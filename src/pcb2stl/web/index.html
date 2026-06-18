@@ -33,15 +33,25 @@
       <h1>pcb2stl</h1>
       <div class="sub">PCB copper → manifold STL for pen-plotting etch resist.</div>
 
-      <label for="file">Gerber, SVG or DXF file</label>
+      <label id="fileLabel" for="file">Gerber, SVG or DXF file</label>
       <input id="file" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+
+      <div id="bottomRow" style="display:none">
+        <label for="file2">Bottom layer (B.Cu)</label>
+        <input id="file2" type="file" accept=".gbr,.ger,.gtl,.gbl,.gto,.gbo,.gko,.gm1,.art,.svg,.dxf" />
+      </div>
 
       <label for="height">Layer height (mm)</label>
       <input id="height" type="number" value="0.2" min="0.01" step="0.01" />
 
-      <div class="row">
+      <div class="row" id="mirrorRow">
         <input id="mirror" type="checkbox" />
         <label for="mirror" style="margin:0">Mirror (for direct drawing)</label>
+      </div>
+
+      <div class="row">
+        <input id="double" type="checkbox" />
+        <label for="double" style="margin:0">Double-sided (top + bottom)</label>
       </div>
 
       <button id="convert">Convert &amp; preview</button>

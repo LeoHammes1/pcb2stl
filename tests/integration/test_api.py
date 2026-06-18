@@ -1,4 +1,5 @@
 import io
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -39,6 +40,24 @@ def test_convert_svg_respects_height():
     assert response.status_code == 200
     mesh = trimesh.load(io.BytesIO(response.content), file_type="stl")
     assert mesh.bounds[1][2] - mesh.bounds[0][2] == pytest.approx(0.3, abs=1e-5)
+
+
+def test_convert_double_returns_a_zip_of_two_watertight_stls():
+    response = client.post(
+        "/api/convert-double",
+        files={
+            "top": ("top.gbr", GERBER, "application/octet-stream"),
+            "bottom": ("bottom.gbr", GERBER, "application/octet-stream"),
+        },
+        data={"height_mm": "0.2"},
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+    archive = zipfile.ZipFile(io.BytesIO(response.content))
+    assert set(archive.namelist()) == {"top.stl", "bottom-mirrored.stl"}
+    for name in archive.namelist():
+        mesh = trimesh.load(io.BytesIO(archive.read(name)), file_type="stl")
+        assert mesh.is_watertight
 
 
 def test_unsupported_format_returns_415():

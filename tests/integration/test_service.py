@@ -43,6 +43,24 @@ def test_dxf_round_trips_to_a_watertight_solid():
     assert mesh.volume > 0.0
 
 
+def test_double_sided_makes_two_mirror_image_meshes_with_fiducials():
+    service = default_service()
+    params = ConversionParams(height_mm=0.2)
+    top, bottom = service.convert_double_sided(("top.gbr", GERBER), ("bot.gbr", GERBER), params)
+    top_mesh, bottom_mesh = _load(top), _load(bottom)
+    assert top_mesh.is_watertight and bottom_mesh.is_watertight
+
+    # the bottom is the X-mirror of the top, so it draws right on the flipped board
+    assert bottom_mesh.bounds[0][0] == pytest.approx(-top_mesh.bounds[1][0], abs=0.01)
+    assert bottom_mesh.bounds[1][0] == pytest.approx(-top_mesh.bounds[0][0], abs=0.01)
+    assert bottom_mesh.bounds[:, 1].tolist() == pytest.approx(top_mesh.bounds[:, 1].tolist(), abs=0.01)
+
+    # both carry the two ring fiducials on top of the bare copper
+    plain = _load(service.convert("c.gbr", GERBER, params))
+    assert top_mesh.body_count == plain.body_count + 2
+    assert bottom_mesh.body_count == plain.body_count + 2
+
+
 def test_unsupported_extension_is_rejected():
     with pytest.raises(UnsupportedFormatError):
         default_service().convert("board.pdf", b"junk", ConversionParams())

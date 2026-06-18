@@ -19,6 +19,10 @@ docker build -t pcb2stl . && docker run -p 8000:8000 pcb2stl
 Open the browser UI, drop a Gerber/SVG/DXF, set the layer height (≈ your pen width),
 optionally mirror, preview in 3D, and download the STL.
 
+For a **two-layer board**, tick *Double-sided* and add the bottom layer: you get a ZIP
+with `top.stl` and a mirrored `bottom.stl`, both carrying two ring registration
+fiducials in the margins. Drill those, pin the board, and flip — the sides stay aligned.
+
 ## How it works
 
 ```
@@ -51,9 +55,10 @@ uvicorn pcb2stl.api:app --reload
 
 ## Status & limits
 
-- Single copper layer. Pads are solid (drill after etching).
+- Pads are solid (drill after etching).
 - SVG without a physical size, and DXF without `$INSUNITS`, are read as millimetres.
-- Double-sided registration is not implemented yet.
+- Double-sided alignment is by drilled registration holes; there is no copper-fill
+  drill output yet.
 
 ## License
 
