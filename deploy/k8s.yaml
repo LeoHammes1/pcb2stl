@@ -1,7 +1,8 @@
 # pcb2stl — production namespace, Traefik ingress + cert-manager (cloudflare-issuer)
 # URL: https://pcb2stl.online
-# The CI sets the image to ghcr.io/<owner>/pcb2stl:<sha> on deploy; the tag below
-# is only the fallback for a manual `kubectl apply`. Replace <owner> with your GH user.
+# Standalone reference manifest. The live deployment is managed in the KubeCluster
+# repo (apps/pcb2stl.yaml); CI only builds and pushes the multi-arch image to GHCR.
+# The :latest tag below is reused on every build — `rollout restart` to pull a new one.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -27,7 +28,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: pcb2stl
-          image: ghcr.io/leohammes/pcb2stl:latest
+          image: ghcr.io/leohammes1/pcb2stl:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
